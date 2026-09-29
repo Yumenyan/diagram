@@ -26,7 +26,7 @@ button.pri{background:var(--ac);color:#fff}
 button.x{border:0;color:var(--mut);padding:2px 6px;background:none}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
 textarea{width:100%;min-height:70px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--fg);background:#f7fbff;border:1px solid var(--bd);border-radius:6px;padding:6px}
-.sr{display:grid;grid-template-columns:minmax(0,1fr) 78px 56px 40px 26px;gap:4px;align-items:center;margin-bottom:4px}
+.sr{display:grid;grid-template-columns:minmax(0,1fr) 74px 52px 34px 34px 24px;gap:4px;align-items:center;margin-bottom:4px}
 .sr.hd{font-size:11px;color:var(--mut)}
 .zr{display:flex;gap:4px;align-items:center;font-size:11px;color:var(--mut);margin:0 0 4px 12px}
 .zr input{width:62px}
@@ -51,6 +51,11 @@ textarea{width:100%;min-height:70px;font:12px/1.5 ui-monospace,Menlo,Consolas,mo
 .bd small{display:block;color:var(--mut);font-size:10px}
 select{min-width:0;width:100%;font:13px/1.4 inherit;color:var(--fg);background:#f7fbff;border:1px solid var(--bd);border-radius:6px;padding:4px}
 .rh select{width:84px}.rst{font-size:11px;padding:1px 8px;margin-left:8px}
+.qrow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mut);margin:0 0 4px 12px}.qrow input{width:16px;height:16px}
+.stn.qL::after,.stn.qR::after{content:"";position:absolute;top:41px;height:4px;background:#bfe3f7;left:0;right:0}
+.stn.qL:not(.qR)::after{right:50%}.stn.qR:not(.qL)::after{left:50%}
+.dr{font-size:10px;color:var(--mut);margin-left:2px}
+.dp{border:1px solid var(--bd);border-radius:8px;padding:8px;margin-bottom:8px}.dp b{font-size:12px}.sm{font-size:11px;padding:1px 8px;margin-top:4px}
 .wrap{overflow-x:auto}
 canvas{display:block;width:100%;height:440px}
 .note{color:var(--mut);font-size:12px;margin:4px 0 0}
@@ -70,7 +75,7 @@ ul{margin:6px 0 0;padding-left:18px}li{margin-bottom:2px}
 <div>
 <section>
 <h2>1. 駅と駅間距離</h2>
-<div class="sr hd"><span>駅名</span><span>次駅まで m</span><span>km/h</span><span>待避</span><span></span></div>
+<div class="sr hd"><span>駅名</span><span>次駅まで m</span><span>km/h</span><span>↓待避</span><span>↑待避</span><span></span></div>
 <div id="stl"></div>
 <button id="addst">＋ 駅を追加</button>
 <details open style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--ac2)">CSVの読み込み・距離の貼り付け</summary><p class="note">スクリプトが出力したCSVのファイルを選ぶか、下に貼り付けます。</p><input type="file" id="csvf" accept=".csv,.txt" style="margin:4px 0 6px">
@@ -91,6 +96,16 @@ ul{margin:6px 0 0;padding-left:18px}li{margin-bottom:2px}
 <div id="sres" class="note"></div>
 </section>
 <section>
+<h2>4. MTRの出庫設定に貼り付ける</h2>
+<div class="set">
+<div><label for="base">基準時刻（ダイヤの0秒）</label><input id="base" value="05:00:00"></div>
+<div><label for="lastT">終電（最終出庫）</label><input id="lastT" value="23:00:00"></div>
+</div>
+<div id="dep" style="margin-top:8px"></div>
+<button id="depall">すべてコピー</button>
+<p class="note">出庫時刻は「基準時刻＋出発ずらし−出庫から始発駅発車までの秒数」で計算し、最終出庫までに出せる本数を自動で数えます（例: 05:00:00+360*00:03:00）。24時以降は 24:30:00 のように入力できます。系統ごとに終電を変えたいときは、系統の欄に入れてください。</p>
+</section>
+<section>
 <h2>走行の設定</h2>
 <div class="set">
 <div><label for="acc">加速度 km/h/s</label><input id="acc" type="number" value="14.4" step="0.1" min="0.1"></div>
@@ -99,8 +114,9 @@ ul{margin:6px 0 0;padding-left:18px}li{margin-bottom:2px}
 <div><label for="bl">閉塞長 m</label><input id="bl" type="number" value="100" step="10" min="0"></div>
 <div><label for="mp">退避前の余裕 秒</label><input id="mp" type="number" value="10" step="0.5" min="0"></div>
 <div><label for="mg">通過後の余裕 秒</label><input id="mg" type="number" value="5" step="0.5" min="0"></div>
+<div><label for="cap">待避停車の上限 秒（0=無制限）</label><input id="cap" type="number" value="0" step="5" min="0"></div>
 </div>
-<p class="note">退避前の余裕：待たせる列車が待避駅のホームに着いてから、追い越す列車が手前の閉塞（閉塞長ぶん手前）に入るまでに最低限あけたい時間です。足りない場合は、より手前の待避駅で待たせます。通過後の余裕：追い越しを見送ってから発車するまでの時間です。</p>
+<p class="note">退避前の余裕：待たせる列車が待避駅のホームに着いてから、追い越す列車が手前の閉塞（閉塞長ぶん手前）に入るまでに最低限あけたい時間です。足りない場合は、より手前の待避駅で待たせます。通過後の余裕：追い越しを見送ってから発車するまでの時間です。待避停車の上限：待避駅での停車時間（基本＋追加）がこの秒数を超える待避は行いません。上限内で待避できない追い越しは、赤い警告になります。</p>
 <div id="err" role="alert"></div>
 </section>
 </div>
@@ -112,7 +128,7 @@ ul{margin:6px 0 0;padding-left:18px}li{margin-bottom:2px}
 <section>
 <h2>スジ図</h2>
 <div class="wrap"><canvas id="cv" aria-label="スジ図"></canvas></div>
-<p class="note">太い線は停車中です。丸印は別系統のスジが交わる位置で、緑は待避駅での追い越し、赤は待避できない場所です。</p>
+<p class="note">太い線は停車中です。丸印は別系統のスジが交わる位置で、緑は待避駅での追い越し、赤は待避できない場所、青は複々線区間での追い越しです。</p>
 </section>
 </div>
 </main>
@@ -120,8 +136,8 @@ ul{margin:6px 0 0;padding-left:18px}li{margin-bottom:2px}
 const $=i=>document.getElementById(i),COL=['#0ea5e9','#f97316','#22c55e','#a855f7','#ec4899','#eab308'];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
-let uid=1,ST,ND,NDU,LX,RT,TR,CR,W,acc,dec,MG,BL,MP;const KEY='mtr-diagram-v2';
-const mk=(n,d,v,p)=>({id:uid++,n,d,v,p,z:[]});
+let uid=1,ST,ND,NDU,LX,RT,TR,CR,W,acc,dec,MG,BL,MP,CAP;const KEY='mtr-diagram-v2';
+const mk=(n,d,v,p)=>({id:uid++,n,d,v,p,pu:p,q:0,z:[]});
 const S={st:[mk('A',1200,120,0),mk('B',1500,120,0),mk('C',2000,120,1),mk('D',1500,120,0),mk('E',1800,120,0),mk('F',0,120,0)],rt:[]};
 const all=new Set(S.st.map(s=>s.id)),ex3=new Set([S.st[0].id,S.st[3].id,S.st[5].id]);
 S.rt=[{n:'各停下り',dir:0,iv:300,off:0,dw:10,tn:90,nl:2,next:1,stops:all},{n:'各停上り',dir:1,iv:0,off:0,dw:10,tn:90,nl:0,next:-1,stops:new Set(all)},
@@ -130,11 +146,11 @@ S.rt=[{n:'各停下り',dir:0,iv:300,off:0,dw:10,tn:90,nl:2,next:1,stops:all},{n
 function renderSt(){
   $('stl').innerHTML=S.st.map((s,i)=>{const last=i==S.st.length-1;
     const zs=s.z.map((z,j)=>`<div class="zr">低速 手前から<input type="number" value="${z.at}" data-k="at" data-z="${j}">m 長さ<input type="number" value="${z.len}" data-k="len" data-z="${j}">m<input type="number" value="${z.v}" data-k="v" data-z="${j}">km/h<button class="x" data-a="zdel" data-z="${j}" aria-label="低速区間を削除">✕</button></div>`).join('');
-    return `<div class="srow" data-i="${i}"><div class="sr"><input value="${esc(s.n)}" data-k="n" aria-label="駅名"><input type="number" value="${s.d}" data-k="d" ${last?'disabled':''} aria-label="次駅までの距離"><input type="number" value="${s.v}" data-k="v" ${last?'disabled':''} aria-label="速度"><input type="checkbox" ${s.p?'checked':''} data-k="p" aria-label="待避できる"><button class="x" data-a="del" aria-label="駅を削除">✕</button></div>${zs}${last?'':'<button class="zb" data-a="zadd">＋ 低速区間（カーブなど）</button>'}</div>`}).join('');
+    return `<div class="srow" data-i="${i}"><div class="sr"><input value="${esc(s.n)}" data-k="n" aria-label="駅名"><input type="number" value="${s.d}" data-k="d" ${last?'disabled':''} aria-label="次駅までの距離"><input type="number" value="${s.v}" data-k="v" ${last?'disabled':''} aria-label="速度"><input type="checkbox" ${s.p?'checked':''} data-k="p" aria-label="下りで待避できる"><input type="checkbox" ${s.pu?'checked':''} data-k="pu" aria-label="上りで待避できる"><button class="x" data-a="del" aria-label="駅を削除">✕</button></div>${zs}${last?'':`<label class="qrow"><input type="checkbox" ${s.q?'checked':''} data-k="q">次駅まで複々線（待避なしで追い越し可）</label><button class="zb" data-a="zadd">＋ 低速区間（カーブなど）</button>`}</div>`}).join('');
 }
 function renderRt(){
   const op=(v,t,sel)=>`<option value="${v}"${sel?' selected':''}>${t}</option>`;
-  $('rtl').innerHTML=S.rt.map((r,i)=>`<div class="rc" data-i="${i}" style="border-left-color:${COL[i%6]}"><div class="rh"><input value="${esc(r.n)}" data-k="n" aria-label="系統名"><select data-k="dir" aria-label="方向">${op(0,'下り',!r.dir)}${op(1,'上り',r.dir)}</select><button class="x" data-a="rdel" aria-label="系統を削除">✕</button></div><div class="r3"><div><label>出庫間隔 秒</label><input type="number" value="${r.iv}" data-k="iv"></div><div><label>出発ずらし 秒</label><input type="number" value="${r.off}" data-k="off"></div><div><label>基本停車 秒</label><input type="number" value="${r.dw}" step="0.5" data-k="dw"></div><div><label>終点で次の系統に</label><select data-k="next">${op(-1,'なし（回送）',(r.next??-1)<0)}${S.rt.map((q,j)=>op(j,esc(q.n),r.next===j)).join('')}</select></div><div><label>折返し停車 秒</label><input type="number" value="${r.tn??90}" data-k="tn"></div><div><label>走る区間数(0=無制限)</label><input type="number" value="${r.nl||0}" data-k="nl"></div></div><div class="chips">${S.st.map(s=>`<button class="chip${r.stops.has(s.id)?' on':''}" data-a="chip" data-id="${s.id}" style="--c:${COL[i%6]}">${esc(s.n)}</button>`).join('')}</div></div>`).join('');
+  $('rtl').innerHTML=S.rt.map((r,i)=>`<div class="rc" data-i="${i}" style="border-left-color:${COL[i%6]}"><div class="rh"><input value="${esc(r.n)}" data-k="n" aria-label="系統名"><select data-k="dir" aria-label="方向">${op(0,'下り',!r.dir)}${op(1,'上り',r.dir)}</select><button class="x" data-a="rdel" aria-label="系統を削除">✕</button></div><div class="r3"><div><label>出庫間隔 秒</label><input type="number" value="${r.iv}" data-k="iv"></div><div><label>出発ずらし 秒</label><input type="number" value="${r.off}" data-k="off"></div><div><label>基本停車 秒</label><input type="number" value="${r.dw}" step="0.5" data-k="dw"></div><div><label>終点で次の系統に</label><select data-k="next">${op(-1,'なし（回送）',(r.next??-1)<0)}${S.rt.map((q,j)=>op(j,esc(q.n),r.next===j)).join('')}</select></div><div><label>折返し停車 秒</label><input type="number" value="${r.tn??90}" data-k="tn"></div><div><label>走る区間数(0=無制限)</label><input type="number" value="${r.nl||0}" data-k="nl"></div></div><div class="chips">${S.st.map(s=>`<button class="chip${r.stops.has(s.id)?' on':''}" data-a="chip" data-id="${s.id}" style="--c:${COL[i%6]}">${esc(s.n)}</button>`).join('')}</div></div>`).join('');renderDep();
 }
 $('stl').oninput=e=>{const t=e.target,r=t.closest('.srow'),k=t.dataset.k;if(!r||!k)return;
   const s=S.st[r.dataset.i],z=t.dataset.z,v=t.type=='checkbox'?t.checked:t.type=='number'?+t.value:t.value;
@@ -161,8 +177,8 @@ function importCsv(t){
     else if(p[0]=='S'){cur=mk(p[1],+p[2]||0,+p[3]||120,0);st.push(cur)}
     else if(p[0]=='Z'&&cur&&+p[3]>0)cur.z.push({at:+p[2]||0,len:+p[3],v:+p[4]||60})}
   if(st.length<2){$('err').textContent='CSVから駅を読み取れませんでした。';return}
-  const byId=Object.fromEntries(S.st.map(s=>[s.id,s.n])),pn=Object.fromEntries(S.st.map(s=>[s.n,s.p]));
-  st.forEach(s=>{s.p=pn[s.n]||0});
+  const byId=Object.fromEntries(S.st.map(s=>[s.id,s.n])),pn=Object.fromEntries(S.st.map(s=>[s.n,s]));
+  st.forEach(s=>{const o=pn[s.n];s.p=o?o.p:0;s.pu=o?o.pu:0;s.q=o?o.q:0});
   S.rt.forEach(r=>{const ns=new Set([...r.stops].map(id=>byId[id])),k=st.filter(s=>ns.has(s.n));r.stops=new Set((k.length>1?k:st).map(s=>s.id))});
   S.st=st;renderSt();renderRt();calc();
 }
@@ -173,19 +189,19 @@ $('bulkb').onclick=()=>{const raw=$('bulk').value;if(/^#mtrdia|^S,/m.test(raw)){
   else{const old=Object.fromEntries(S.st.map(s=>[s.n,s]));
     S.st=ls.map(l=>{const p=l.split(/[,\t]/).map(s=>s.trim()),o=old[p[0]];return o?Object.assign(o,{d:+p[1]||o.d}):mk(p[0],+p[1]||0,120,0)})}
   renderSt();renderRt();calc()};
-['acc','dec','mg','win','bl','mp'].forEach(i=>$(i).oninput=calc);
+['acc','dec','mg','win','bl','mp','cap','base','lastT'].forEach(i=>$(i).oninput=calc);
 
 function model(){
   const st=S.st;
-  ST=[{n:st[0].n,x:0,i:0,p:st[0].p,id:st[0].id}];ND=[{x:0,l:0}];let x=0;
+  ST=[{n:st[0].n,x:0,i:0,p:st[0].p,pu:st[0].pu,q:st[0].q,id:st[0].id}];ND=[{x:0,l:0}];let x=0;
   for(let k=0;k<st.length-1;k++){const s=st[k];
     if(!(s.d>0&&s.v>0))throw`「${s.n}」の次駅までの距離と速度は正の数にしてください。`;
     const n=Math.ceil(s.d/5),h=s.d/n;
     for(let j=0;j<n;j++){const m=(j+.5)*h;let v=s.v;s.z.forEach(z=>{if(z.v>0&&m>=z.at&&m<z.at+z.len)v=Math.min(v,z.v)});x+=h;ND.push({x,l:v/3.6})}
-    ST.push({n:st[k+1].n,x,i:ND.length-1,p:st[k+1].p,id:st[k+1].id});
+    ST.push({n:st[k+1].n,x,i:ND.length-1,p:st[k+1].p,pu:st[k+1].pu,q:st[k+1].q,id:st[k+1].id});
   }
   LX=x;NDU=ND.map((_,j)=>({x:LX-ND[ND.length-1-j].x,l:j?ND[ND.length-j].l:0}));
-  acc=+$('acc').value/3.6;dec=+$('dec').value/3.6;W=(+$('win').value||30)*60;MG=+$('mg').value||0;BL=Math.max(0,+$('bl').value||0);MP=Math.max(0,+$('mp').value||0);
+  acc=+$('acc').value/3.6;dec=+$('dec').value/3.6;W=(+$('win').value||30)*60;MG=+$('mg').value||0;BL=Math.max(0,+$('bl').value||0);MP=Math.max(0,+$('mp').value||0);CAP=Math.max(0,+$('cap').value||0);
   if(!(acc>0&&dec>0))throw'加速度と減速度は正の数にしてください。';
   const N=ND.length;
   RT=S.rt.map((r,ri)=>{
@@ -225,6 +241,8 @@ function posAt(p,t){
 const leave=(p,x,d)=>{const U=d?-1:1;let t=p[0].t;for(const q of p){if((q.x-x)*U<=.01)t=q.t;else break}return t};
 // 位置xに最初に到達する時刻（二分探索）。手前から進入する列車の到着・閉塞への進入時刻に使う
 const arr=(p,x,d)=>{const U=d?-1:1;let lo=0,hi=p.length-1;if((p[hi].x-x)*U<-.01)return p[hi].t;while(lo<hi){const m=(lo+hi)>>1;(p[m].x-x)*U>=-.01?hi=m:lo=m+1}return p[lo].t};
+// 複々線の区間内、または複々線に接する駅の付近での交差か
+const qa=x=>{let k=ST.findIndex(s=>s.x>x+.01)-1;if(k<0)k=ST.length-2;const n=ST.findIndex(s=>Math.abs(s.x-x)<80);return!!(ST[k].q||(n>=0&&((n>0&&ST[n-1].q)||(n<ST.length-1&&ST[n].q))))};
 function cross(){
   const o=[];
   for(let i=0;i<TR.length;i++)for(let j=i+1;j<TR.length;j++){
@@ -243,8 +261,13 @@ function solve(){
     sim();CR=cross();const add={};
     CR.forEach(q=>{
       const Y=TR[q.Y],X=TR[q.X],ry=RT[Y.r],rx=RT[X.r],d=Y.dir,uq=u(q.x,d),uy0=u(ry.pts[0].x,d),uy1=u(ry.pts[ry.pts.length-1].x,d),ux0=u(rx.pts[0].x,d);
-      const cs=ST.map((s,k)=>({s,k,u:u(s.x,d)})).filter(o=>o.s.p&&o.u<=uq+80&&ry.stops.has(d?N-1-o.s.i:o.s.i)&&o.u>uy0+.01&&o.u<uy1-.01&&o.u>=ux0-.01).sort((a,b)=>a.u-b.u);
-      if(!cs.length){q.bad=1;return}
+      if(qa(q.x)){q.quad=1;return}
+      const cs0=ST.map((s,k)=>({s,k,u:u(s.x,d)})).filter(o=>(d?o.s.pu:o.s.p)&&o.u<=uq+80&&ry.stops.has(d?N-1-o.s.i:o.s.i)&&o.u>uy0+.01&&o.u<uy1-.01&&o.u>=ux0-.01).sort((a,b)=>a.u-b.u);
+      if(!cs0.length){q.bad=1;return}
+      const nkOf=o=>d?N-1-o.s.i:o.s.i,needOf=o=>leave(X.pts,o.s.x,d)+MG-leave(Y.pts,o.s.x,d);
+      // 待避停車の上限：基本停車＋追加の合計が上限を超える駅は使わない
+      const cs=CAP?cs0.filter(o=>{const nd=needOf(o);return nd<=.05||ry.dw+(ry.ex[nkOf(o)]||0)+nd<=CAP+.01}):cs0;
+      if(!cs.length){q.bad=1;q.cap=1;return}
       // 退避前の余裕：Yがホームに着いてから、Xが手前の閉塞（閉塞長ぶん手前）に入るまでの時間。
       // 手前の駅から順に、余裕を満たす最も近い待避駅を選ぶ。どこも満たさなければ最も余裕の大きい駅を選び、警告する。
       const Ud=d?-1:1;let c=null,best=null;
@@ -253,8 +276,8 @@ function solve(){
         if(g>=MP-.01){c=o;q.gap=g;break}}
       if(!c){c=best.o;q.gap=best.g;q.tight=1}
       q.sk=c.k;
-      const need=leave(X.pts,c.s.x,d)+MG-leave(Y.pts,c.s.x,d);
-      if(need>.05){const nk=Y.r+'_'+(d?N-1-c.s.i:c.s.i);add[nk]=Math.max(add[nk]||0,need)}
+      const need=needOf(c);
+      if(need>.05){const nk=Y.r+'_'+nkOf(c);add[nk]=Math.max(add[nk]||0,need)}
     });
     const ks=Object.keys(add);if(!ks.length)break;
     ks.forEach(k=>{const[a,b]=k.split('_');RT[a].ex[b]=Math.min(600,Math.ceil(((RT[a].ex[b]||0)+add[k])*2)/2)});
@@ -262,22 +285,24 @@ function solve(){
 }
 function metrics(){const cn={};TR.forEach(t=>cn[t.r]=(cn[t.r]||0)+1);let d=0;RT.forEach(r=>Object.values(r.ex).forEach(e=>d+=e*(cn[r.ri]||0)*3600/W));return{d,bad:CR.filter(q=>q.bad).length,tight:CR.filter(q=>q.tight).length}}
 function calc(){
-  try{$('err').textContent='';model();solve();show();draw();save()}
+  try{$('err').textContent='';model();solve();show();draw();updDep();save()}
   catch(e){$('err').textContent=String(e)}
 }
 function show(){
   const hold={},N=ND.length,nm=r=>(r.dir?'↑':'↓')+esc(r.n),exOf=(r,k)=>r.ex[r.dir?N-1-ST[k].i:ST[k].i]||0;
-  const gp={};CR.filter(q=>!q.bad).forEach(q=>{const y=TR[q.Y].r,x=TR[q.X].r;((hold[q.sk]=hold[q.sk]||{})[y]=hold[q.sk][y]||new Set).add(x);const gk=q.sk+'_'+y;gp[gk]=Math.min(gp[gk]??1e9,q.gap)});
+  const gp={};CR.filter(q=>!q.bad&&!q.quad).forEach(q=>{const y=TR[q.Y].r,x=TR[q.X].r;((hold[q.sk]=hold[q.sk]||{})[y]=hold[q.sk][y]||new Set).add(x);const gk=q.sk+'_'+y;gp[gk]=Math.min(gp[gk]??1e9,q.gap)});
   let h='<div class="strip">'+ST.map((s,k)=>{
     const hs=hold[k]||{};
     const items=Object.keys(hs).map(y=>{const r=RT[y],ex=exOf(r,k);
       return `<div class="bd" style="--c:${COL[y%6]}"><b>${nm(r)}</b><br>停車 ${r.dw+ex}秒${ex?`<em>+${ex}秒</em>`:''}<small>${[...hs[y]].map(x=>nm(RT[x])).join('・')}を待つ</small></div>`}).join('');
-    return `<div class="stn${s.p?' pass':''}"><div class="nm">${esc(s.n)}</div><div class="dot"></div>${items}</div>`}).join('')+'</div>';
+    return `<div class="stn${s.p||s.pu?' pass':''}${k>0&&ST[k-1].q?' qL':''}${s.q&&k<ST.length-1?' qR':''}"><div class="nm">${esc(s.n)}${s.p||s.pu?`<span class="dr">${s.p?'↓':''}${s.pu?'↑':''}</span>`:''}</div><div class="dot"></div>${items}</div>`}).join('')+'</div>';
   let li='';
   Object.keys(hold).sort((a,b)=>a-b).forEach(k=>Object.keys(hold[k]).forEach(y=>{const r=RT[y],ex=exOf(r,k);
     li+=`<li><b>${esc(ST[k].n)}駅</b>で<b>${nm(r)}</b>を${r.dw+ex}秒停車させる${ex?`（基本${r.dw}秒に+${ex}秒）`:'（基本の停車時間のままで成立）'}。${[...hold[k][y]].map(x=>nm(RT[x])).join('・')}が追い越します（退避前の余裕 最小${Math.max(0,Math.round(gp[k+'_'+y]))}秒）。</li>`}));
   const bad={};CR.filter(q=>q.bad).forEach(q=>bad[TR[q.X].r+'_'+TR[q.Y].r+'_'+q.w]=q);
-  Object.values(bad).forEach(q=>li+=`<li class="warn">${nm(RT[TR[q.X].r])}が${nm(RT[TR[q.Y].r])}に${esc(q.w)}で追いつきます。手前に${nm(RT[TR[q.Y].r])}が停車する待避駅がありません。待避駅を増やすか、出発ずらしを変えてください。</li>`);
+  Object.values(bad).forEach(q=>li+=`<li class="warn">${nm(RT[TR[q.X].r])}が${nm(RT[TR[q.Y].r])}に${esc(q.w)}で追いつきます。${q.cap?`待避停車の上限（${CAP}秒）を超えるため、待避させられません。上限を上げるか、出発ずらし・待避駅を見直してください。`:`手前に${nm(RT[TR[q.Y].r])}が停車する待避駅がありません（この方向で待避できる駅が必要です）。待避駅を増やすか、出発ずらしを変えてください。`}</li>`);
+  const qd={};CR.filter(q=>q.quad).forEach(q=>qd[TR[q.X].r+'_'+TR[q.Y].r+'_'+q.w]=q);
+  Object.values(qd).forEach(q=>li+=`<li><b>${esc(q.w)}</b>は複々線のため、待避なしで${nm(RT[TR[q.X].r])}が${nm(RT[TR[q.Y].r])}を追い越します。</li>`);
   const tg={};CR.filter(q=>q.tight).forEach(q=>tg[TR[q.X].r+'_'+TR[q.Y].r+'_'+q.sk]=q);
   Object.values(tg).forEach(q=>li+=`<li class="warn">${nm(RT[TR[q.X].r])}が${esc(ST[q.sk].n)}駅で${nm(RT[TR[q.Y].r])}を追い越す場面は、退避前の余裕が${Math.max(0,Math.round(q.gap))}秒しかなく（目標${MP}秒）、閉塞に詰まる可能性があります。出発ずらしの変更か、待避駅の追加を検討してください。</li>`);
   if(!li)li='<li class="good">追い越しは発生していません。</li>';
@@ -293,12 +318,12 @@ function draw(){
   const step=W<=900?60:300;g.textAlign='center';
   for(let t=0;t<=W;t+=step){g.strokeStyle='#e6f0f8';g.beginPath();g.moveTo(px(t),T);g.lineTo(px(t),h-B);g.stroke();g.fillStyle='#5f7d95';g.fillText(Math.round(t/60)+'分',px(t),h-B+12)}
   g.textAlign='right';
-  ST.forEach(s=>{g.strokeStyle=s.p?'#7cc8ee':'#d5e6f3';g.lineWidth=s.p?2:1;g.beginPath();g.moveTo(L,py(s.x));g.lineTo(w-R,py(s.x));g.stroke();g.fillStyle=s.p?'#0284c7':'#16324a';g.fillText(s.n,L-6,py(s.x))});
+  ST.forEach(s=>{g.strokeStyle=(s.p||s.pu)?'#7cc8ee':'#d5e6f3';g.lineWidth=(s.p||s.pu)?2:1;g.beginPath();g.moveTo(L,py(s.x));g.lineTo(w-R,py(s.x));g.stroke();g.fillStyle=(s.p||s.pu)?'#0284c7':'#16324a';g.fillText(s.n,L-6,py(s.x))});
   TR.forEach(tr=>{g.strokeStyle=COL[tr.r%6];const p=tr.pts;
     if(tr.pl){g.setLineDash([]);g.lineWidth=4;g.beginPath();g.moveTo(px(tr.pl.t),py(tr.pl.x));g.lineTo(px(p[0].t),py(p[0].x));g.stroke()}
     for(let k=1;k<p.length;k++){const st=p[k].x==p[k-1].x;g.setLineDash(st||!tr.dir?[]:[6,3]);g.lineWidth=st?4:1.6;g.beginPath();g.moveTo(px(p[k-1].t),py(p[k-1].x));g.lineTo(px(p[k].t),py(p[k].x));g.stroke()}
     g.setLineDash([])});
-  CR.forEach(q=>{if(q.t>W)return;g.fillStyle=q.bad?'#e5484d':'#12a36b';g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.arc(px(q.t),py(q.x),4.5,0,7);g.fill();g.stroke()});
+  CR.forEach(q=>{if(q.t>W)return;g.fillStyle=q.bad?'#e5484d':q.quad?'#0ea5e9':'#12a36b';g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.arc(px(q.t),py(q.x),4.5,0,7);g.fill();g.stroke()});
 }
 async function search(){
   try{model()}catch(e){$('err').textContent=String(e);return}
@@ -326,11 +351,26 @@ async function search(){
 }
 $('srch').onclick=search;
 addEventListener('resize',draw);
-function save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,st:S.st,rt:S.rt.map(r=>({...r,stops:[...r.stops]})),acc:$('acc').value,dec:$('dec').value,mg:$('mg').value,win:$('win').value,bl:$('bl').value,mp:$('mp').value}))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,st:S.st,rt:S.rt.map(r=>({...r,stops:[...r.stops]})),acc:$('acc').value,dec:$('dec').value,mg:$('mg').value,win:$('win').value,bl:$('bl').value,mp:$('mp').value,cap:$('cap').value,base:$('base').value,lastT:$('lastT').value}))}catch(e){}}
 function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');
-  if(j&&Array.isArray(j.st)&&j.st.length>1&&Array.isArray(j.rt)){S.st=j.st;S.rt=j.rt.map(r=>({...r,stops:new Set(r.stops)}));uid=1+Math.max(0,...S.st.map(s=>s.id));
-    ['acc','dec','mg','win','bl','mp'].forEach(k=>{if(j[k]!==undefined)$(k).value=j[k]})}}catch(e){}}
+  if(j&&Array.isArray(j.st)&&j.st.length>1&&Array.isArray(j.rt)){S.st=j.st;S.st.forEach(s=>{if(s.pu===undefined)s.pu=s.p;if(s.q===undefined)s.q=0});S.rt=j.rt.map(r=>({...r,stops:new Set(r.stops)}));uid=1+Math.max(0,...S.st.map(s=>s.id));
+    ['acc','dec','mg','win','bl','mp','cap','base','lastT'].forEach(k=>{if(j[k]!==undefined)$(k).value=j[k]})}}catch(e){}}
 $('rst').onclick=()=>{const b=$('rst');if(b.dataset.a){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}else{b.dataset.a=1;b.textContent='もう一度押すと初期化します';setTimeout(()=>{delete b.dataset.a;b.textContent='初期状態に戻す'},3000)}};
+const pt=t=>{const m=/^\s*(\d+):(\d{1,2})(?::(\d{1,2}))?\s*$/.exec(t||'');return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):NaN};
+const hms=s=>{s=((Math.round(s)%86400)+86400)%86400;return[s/3600|0,(s/60|0)%60,s%60].map(v=>String(v).padStart(2,'0')).join(':')};
+function depStr(r){const iv=Math.round(r.iv),b=pt($('base').value);let l=pt(r.lst);if(isNaN(l))l=pt($('lastT').value);
+  if(isNaN(b)||isNaN(l)||!(iv>0))return null;
+  const st=b+(+r.off||0)-(+r.dp||0),n=Math.floor((l-st)/iv)+1;
+  return n<1?'出庫なし':hms(st)+'+'+n+'*'+hms(iv)}
+function renderDep(){
+  $('dep').innerHTML=S.rt.map((r,i)=>r.iv>0?`<div class="dp" data-i="${i}" style="border-left:5px solid ${COL[i%6]}"><b>${r.dir?'↑':'↓'}${esc(r.n)}</b><div class="r3"><div><label>出庫→始発駅発車 秒</label><input type="number" value="${r.dp||0}" data-k="dp"></div><div><label>最終出庫（空=全体）</label><input value="${esc(r.lst||'')}" data-k="lst" placeholder="全体の設定"></div><div><label>出庫設定</label><input readonly id="ds${i}"></div></div><button class="sm" data-a="cp">コピー</button></div>`:'').join('')||'<p class="note">出庫する系統がありません。</p>';
+}
+function updDep(){S.rt.forEach((r,i)=>{const e=$('ds'+i);if(e)e.value=r.iv>0?(depStr(r)||'入力エラー'):''})}
+function copy(t,b){const done=()=>{if(b){const o=b.textContent;b.textContent='コピーしました';setTimeout(()=>b.textContent=o,1200)}};
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(done,()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(e){}a.remove()})}
+$('dep').oninput=e=>{const t=e.target,c=t.closest('.dp');if(!c||!t.dataset.k)return;S.rt[c.dataset.i][t.dataset.k]=t.type=='number'?+t.value:t.value;calc()};
+$('dep').onclick=e=>{const b=e.target.closest('button');if(b)copy($('ds'+b.closest('.dp').dataset.i).value,b)};
+$('depall').onclick=e=>copy(S.rt.map((r,i)=>r.iv>0?r.n+'\t'+$('ds'+i).value:'').filter(Boolean).join('\n'),e.target);
 load();renderSt();renderRt();calc();
 </script>
 </body>
