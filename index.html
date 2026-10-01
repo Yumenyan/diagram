@@ -145,7 +145,8 @@ details.more>summary,details.help>summary{cursor:pointer;font-size:12px;color:va
 <h2>待避のルール</h2>
 <div class="rl">
 <label><input type="checkbox" id="one" checked><span><b>待避ホームは各駅・各方向1本</b><br><small>同じ駅・同じ方向で待避させる系統は1系統だけにします。ほかの系統は別の駅に振り分けます。</small></span></label>
-<label><input type="checkbox" id="uni" checked><span><b>同じホームの停車時間を統一</b><br><small>MTRmodはホームごとに停車時間を1つしか設定できません。同じホームに停まる系統は、いちばん長い停車時間にそろえます。</small></span></label>
+<label><input type="checkbox" id="uni" checked><span><b>同じホームの停車時間を統一</b><br><small>MTRmodはホームごとに停車時間を1つしか設定できません。同じ駅・同じ方向のホームに停まる系統は、待避するかどうかに関係なく、いちばん長い停車時間にそろえます。</small></span></label>
+<label><input type="checkbox" id="sep"><span><b>待避線を専用ホームとして扱う</b><br><small>待避する系統だけが入る待避線があり、通過待ちをしない系統は別の線路に入る駅の場合だけオンにします。オンのときは待避線と本線を別のホームとして停車時間を統一します（初期はオフ＝同じ駅・方向は全系統が同じホーム）。</small></span></label>
 </div>
 <div class="set">
 <div><label for="mp">退避前の余裕 秒</label><input id="mp" type="number" value="10" step="1" min="0"></div>
@@ -175,8 +176,12 @@ details.more>summary,details.help>summary{cursor:pointer;font-size:12px;color:va
 <div><label for="base">基準時刻（ダイヤの0秒）</label><input id="base" value="05:00:00"></div>
 <div><label for="lastT">終電（最終出庫）</label><input id="lastT" value="23:00:00"></div>
 </div>
+<div class="set" style="margin-top:8px"><div><label for="gap">車庫での折返し余裕 秒</label><input id="gap" type="number" value="60" min="0" step="10"></div></div>
 <div id="dep" style="margin-top:8px"></div>
 <button id="depall">すべてコピー</button>
+<h2 style="margin-top:14px">車庫に配属する編成数（自動算出）</h2>
+<div id="fleet"></div>
+<p class="note">出庫してから走り切り、車庫に戻って再び出庫できるまでの時間（出庫→始発駅＋走行・折返し＋終着後の回送＋余裕）を、出庫間隔で割って切り上げた本数です。終点で別の系統に変わる場合は、その系統の走行も含めて数えます。待避や停車時間の延長によって走行時間が変わると、自動で更新されます。</p>
 <p class="note">出庫時刻は「基準時刻＋出発ずらし−出庫から始発駅発車までの秒数」で計算します（例: 05:00:00+360*00:03:00）。24時以降は 24:30:00 のように入力できます。</p>
 </section>
 <section class="pane" data-t="dp" hidden>
@@ -213,7 +218,7 @@ details.more>summary,details.help>summary{cursor:pointer;font-size:12px;color:va
 const $=i=>document.getElementById(i),COL=['#0ea5e9','#f97316','#22c55e','#a855f7','#ec4899','#eab308'];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
-let uid=1,RT,TR,CR,W,acc,dec,MG,BL,MP,CAP,MET={d:0,bad:0,tight:0},EXID=new Map,EC=new Map,RUNC=new Map,GM=new Map,EMAP=new Map,ONE=1,UNI=1,BAN=new Set,banSig='',WSET=new Set,PL=new Map,CNM=new Map,OPEN=new Set;const KEY='mtr-diagram-v2';
+let uid=1,RT,TR,CR,W,acc,dec,MG,BL,MP,CAP,MET={d:0,bad:0,tight:0},EXID=new Map,EC=new Map,RUNC=new Map,GM=new Map,EMAP=new Map,ONE=1,UNI=1,SEP=0,BAN=new Set,banSig='',WSET=new Set,PL=new Map,CNM=new Map,OPEN=new Set;const KEY='mtr-diagram-v2';
 // ネットワーク: st=駅(点)、ed=区間(線。a→bの向きで低速区間を持つ)、ln=路線(CSV1本=駅の並び)、rt=系統(始発・終着・経由で経路が決まる)
 const S={st:[],ed:[],ln:[],rt:[],cn:[],dp:'r:0',demo:0};
 const cl=i=>(S.rt[i]&&S.rt[i].c)||COL[i%6];
@@ -406,7 +411,7 @@ function model(){
   if(!(acc>0&&dec>0))throw'加速度と減速度は正の数にしてください。';
   if(!S.rt.length)throw'系統を1つ以上作ってください。';
   EXID=new Map;EC=new Map;RUNC=new Map;const adj=graphAdj();S.rt.forEach(r=>r._ids=routePath(r,adj));
-  RT=S.rt.map(buildRoute);ONE=$('one').checked;UNI=$('uni').checked;CNM=new Map;(S.cn||[]).forEach(c=>{const k=c.x+'_'+c.y;if(!CNM.has(k))CNM.set(k,[]);CNM.get(k).push(c)});
+  RT=S.rt.map(buildRoute);ONE=$('one').checked;UNI=$('uni').checked;SEP=$('sep').checked;CNM=new Map;(S.cn||[]).forEach(c=>{const k=c.x+'_'+c.y;if(!CNM.has(k))CNM.set(k,[]);CNM.get(k).push(c)});
   if(!RT.some(r=>r.iv>0))throw'出庫間隔が0より大きい系統を1つ以上作ってください。';
   RT.forEach(useEx);
   const wm=+$('win').value||0;
@@ -531,9 +536,9 @@ function entry(g){
 // ホーム(駅×方向×待避/本線)ごとに、停まる系統と実効停車秒数をまとめる
 function platGroups(){const P=new Map;
   RT.forEach(r=>{for(let k=1;k<r.ids.length-1;k++){const nk=r.si[k];if(!r.stops.has(nk))continue;
-    const dir=r.fw[k]?1:0,w=WSET.has(r.ri+'_'+nk),key=r.ids[k]+'|'+dir+'|'+(w?'W':'M');
-    let g=P.get(key);if(!g){g={id:r.ids[k],dir,w,rs:[]};P.set(key,g)}
-    g.rs.push({r,k,nk,eff:r.dw+(r.ex[nk]||0)})}});
+    const dir=r.fw[k]?1:0,w=WSET.has(r.ri+'_'+nk),key=r.ids[k]+'|'+dir+(SEP?'|'+(w?'W':'M'):'');
+    let g=P.get(key);if(!g){g={id:r.ids[k],dir,w:false,rs:[]};P.set(key,g)}
+    if(w)g.w=true;g.rs.push({r,k,nk,w,eff:r.dw+(r.ex[nk]||0)})}});
   return P}
 // 停車延長(ex)が落ち着くまで繰り返す。追い越し・接続・ホーム停車時間の統一の3つが延長の理由になる
 function inner(){
@@ -612,12 +617,12 @@ function show(){
 }
 function pfTable(D){const el=$('pft');if(!el)return;
   const only=$('pfonly').checked,cns=new Set((S.cn||[]).map(c=>c.s)),oi=id=>D.ix.has(id)?D.ix.get(id):1e4+S.st.findIndex(s=>s.id==id);
-  const rows=[...PL.values()].filter(g=>!only||g.w||cns.has(g.id)||g.rs.some(x=>x.eff!=x.r.dw)).sort((a,b)=>oi(a.id)-oi(b.id)||b.dir-a.dir);
+  const rows=[...PL.values()].filter(g=>!only||g.w||cns.has(g.id)||g.rs.some(x=>x.eff!=x.r.dw)||(g.rs.length>1&&g.rs.some(x=>x.r.dw!=g.rs[0].r.dw))).sort((a,b)=>oi(a.id)-oi(b.id)||b.dir-a.dir);
   if(!rows.length){el.innerHTML='<p class="note">表示する駅がありません。</p>';return}
   const mixed=g=>{const e=g.rs.map(x=>x.eff);return Math.min(...e)!=Math.max(...e)};
   el.innerHTML='<div class="mxw"><table class="pt"><tr><th>駅</th><th>方向</th><th>ホーム</th><th>停車</th><th>使う系統（基本→設定）</th></tr>'+rows.map(g=>{
     const ef=g.rs.map(x=>x.eff),mn=Math.min(...ef),mx=Math.max(...ef);
-    return `<tr><td>${esc(stn(g.id).n)}${cns.has(g.id)?' <span class="tag">接続</span>':''}</td><td>${g.dir?'下り':'上り'}</td><td><span class="tag${g.w?' sd':''}">${g.w?'待避ホーム':'本線ホーム'}</span></td><td><b>${mn==mx?mx+'秒':'<span class="warn">'+mn+'〜'+mx+'秒</span>'}</b></td><td>${g.rs.map(x=>`<span class="chipn"><span class="sw" style="background:${cl(x.r.ri)}"></span>${esc(x.r.n)} ${x.r.dw==x.eff?x.eff+'秒':x.r.dw+'→'+x.eff+'秒'}</span>`).join('')}</td></tr>`}).join('')+'</table></div><p class="note">MTRmodではホームごとに停車時間を1つしか設定できません。「停車」の秒数をそのホームに設定してください。</p>'+(rows.some(mixed)?'<p class="note warn">赤い秒数のホームは系統ごとに停車時間が違います。「同じホームの停車時間を統一」をオンにしてください。</p>':'')}
+    return `<tr><td>${esc(stn(g.id).n)}${cns.has(g.id)?' <span class="tag">接続</span>':''}</td><td>${g.dir?'下り':'上り'}</td><td><span class="tag${g.w?' sd':''}">${g.w?(SEP?'待避ホーム':'待避あり'):'本線ホーム'}</span></td><td><b>${mn==mx?mx+'秒':'<span class="warn">'+mn+'〜'+mx+'秒</span>'}</b></td><td>${g.rs.map(x=>`<span class="chipn"><span class="sw" style="background:${cl(x.r.ri)}"></span>${esc(x.r.n)} ${x.r.dw==x.eff?x.eff+'秒':x.r.dw+'→'+x.eff+'秒'}</span>`).join('')}</td></tr>`}).join('')+'</table></div><p class="note">MTRmodではホームごとに停車時間を1つしか設定できません。「停車」の秒数をそのホームに設定してください。</p>'+(rows.some(mixed)?'<p class="note warn">赤い秒数のホームは系統ごとに停車時間が違います。「同じホームの停車時間を統一」をオンにしてください。</p>':'')}
 // 系統の走行を、表示する経路の縦軸(距離)に対応づける
 function dmapOf(r,D){const sd=r.ids.map(id=>D.ix.has(id)?D.cx[D.ix.get(id)]:null);
   return{sd,ok:r.es.map((_,k)=>sd[k]!=null&&sd[k+1]!=null&&Math.abs(D.ix.get(r.ids[k])-D.ix.get(r.ids[k+1]))==1)}}
@@ -690,7 +695,7 @@ async function search(){
 }
 $('srch').onclick=search;
 addEventListener('resize',draw);
-function save(){try{localStorage.setItem(KEY,JSON.stringify({v:4,st:S.st,ed:S.ed,ln:S.ln,dp:S.dp,cn:S.cn,one:$('one').checked,uni:$('uni').checked,demo:S.demo,rt:S.rt.map(r=>{const{_ids,...o}=r;return{...o,stops:[...r.stops]}}),acc:$('acc').value,dec:$('dec').value,mg:$('mg').value,win:$('win').value,bl:$('bl').value,mp:$('mp').value,cap:$('cap').value,base:$('base').value,lastT:$('lastT').value,auto:$('auto').checked,strict:$('strict').checked,zx:$('zx').value,zy:$('zy').value,eq:$('eq').checked}))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({v:4,st:S.st,ed:S.ed,ln:S.ln,dp:S.dp,cn:S.cn,one:$('one').checked,uni:$('uni').checked,sep:$('sep').checked,demo:S.demo,rt:S.rt.map(r=>{const{_ids,...o}=r;return{...o,stops:[...r.stops]}}),acc:$('acc').value,dec:$('dec').value,mg:$('mg').value,win:$('win').value,bl:$('bl').value,mp:$('mp').value,cap:$('cap').value,base:$('base').value,lastT:$('lastT').value,gap:$('gap').value,auto:$('auto').checked,strict:$('strict').checked,zx:$('zx').value,zy:$('zy').value,eq:$('eq').checked}))}catch(e){}}
 function fromLegacy(j){ // 旧バージョン(1本の直線)の保存データを変換する
   uid=1+Math.max(0,...j.st.map(s=>s.id));
   S.st=j.st.map(s=>({id:s.id,n:s.n,k:keyOf(s.n),p:s.p?1:0,pu:(s.pu===undefined?s.p:s.pu)?1:0}));
@@ -705,7 +710,7 @@ function load(){let ok=false;
         uid=1+Math.max(0,...S.st.map(s=>s.id),...S.ln.map(l=>l.id))}
       else{if((j.v||0)<3)j.win='0';fromLegacy(j)}
       ['acc','dec','mg','win','bl','mp','cap','base','lastT'].forEach(k=>{if(j[k]!==undefined)$(k).value=j[k]});
-      if(j.one!==undefined)$('one').checked=j.one;if(j.uni!==undefined)$('uni').checked=j.uni;if(j.auto!==undefined)$('auto').checked=j.auto;if(j.strict!==undefined)$('strict').checked=j.strict;if(j.zx)$('zx').value=j.zx;if(j.zy)$('zy').value=j.zy;if(j.eq!==undefined)$('eq').checked=j.eq;ok=S.ln.length>0&&S.rt.length>0}}catch(e){ok=false}
+      if(j.gap!==undefined)$('gap').value=j.gap;if(j.one!==undefined)$('one').checked=j.one;if(j.uni!==undefined)$('uni').checked=j.uni;if(j.sep!==undefined)$('sep').checked=j.sep;if(j.auto!==undefined)$('auto').checked=j.auto;if(j.strict!==undefined)$('strict').checked=j.strict;if(j.zx)$('zx').value=j.zx;if(j.zy)$('zy').value=j.zy;if(j.eq!==undefined)$('eq').checked=j.eq;ok=S.ln.length>0&&S.rt.length>0}}catch(e){ok=false}
   if(!ok)demo();touch()}
 $('rst').onclick=()=>{const b=$('rst');if(b.dataset.a){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}else{b.dataset.a=1;b.textContent='もう一度押すと初期化します';setTimeout(()=>{delete b.dataset.a;b.textContent='初期状態に戻す'},3000)}};
 const pt=t=>{const m=/^\s*(\d+):(\d{1,2})(?::(\d{1,2}))?\s*$/.exec(t||'');return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):NaN};
@@ -715,13 +720,20 @@ function depStr(r){const iv=Math.round(r.iv),b=pt($('base').value);let l=pt(r.ls
   const st=b+(+r.off||0)-(+r.dp||0),n=Math.floor((l-st)/iv)+1;
   return n<1?'出庫なし':hms(st)+'+'+n+'*'+hms(iv)}
 function renderDep(){
-  $('dep').innerHTML=S.rt.map((r,i)=>r.iv>0?`<div class="dp" data-i="${i}" style="border-left:5px solid ${cl(i)}"><b>${esc(r.n)}</b><div class="r3"><div><label>出庫→始発駅発車 秒</label><input type="number" value="${r.dp||0}" data-k="dp"></div><div><label>最終出庫（空=全体）</label><input value="${esc(r.lst||'')}" data-k="lst" placeholder="全体の設定"></div><div><label>出庫設定</label><input readonly id="ds${i}"></div></div><button class="sm" data-a="cp">コピー</button></div>`:'').join('')||'<p class="note">出庫する系統がありません。</p>';
+  $('dep').innerHTML=S.rt.map((r,i)=>r.iv>0?`<div class="dp" data-i="${i}" style="border-left:5px solid ${cl(i)}"><b>${esc(r.n)}</b><div class="r3"><div><label>出庫→始発駅発車 秒</label><input type="number" value="${r.dp||0}" data-k="dp"></div><div><label>最終出庫（空=全体）</label><input value="${esc(r.lst||'')}" data-k="lst" placeholder="全体の設定"></div><div><label>出庫設定</label><input readonly id="ds${i}"></div></div><div class="r2" style="margin-top:4px"><div><label>終着後→車庫に戻る 秒</label><input type="number" value="${r.rb??r.dp??0}" data-k="rb"></div><div></div></div><button class="sm" data-a="cp">コピー</button></div>`:'').join('')||'<p class="note">出庫する系統がありません。</p>';
 }
-function updDep(){S.rt.forEach((r,i)=>{const e=$('ds'+i);if(e)e.value=r.iv>0?(depStr(r)||'入力エラー'):''})}
+function fleetCalc(){const el=$('fleet');if(!el||!RT)return;const gap=Math.max(0,+$('gap').value||0);let tot=0,rows='';
+  RT.forEach((r,i)=>{if(!(r.iv>0))return;const sr=S.rt[i];let c=r,t=0,n=0;const seen=new Set(),names=[];
+    while(c&&n<30&&(r.nl?n<r.nl:!seen.has(c.ri))){seen.add(c.ri);names.push(c.n);t+=c.T;const nx=c.next>=0?RT[c.next]:null;if(nx)t+=nx.tn;c=nx;n++}
+    const dp=+sr.dp||0,rb=+(sr.rb??sr.dp??0)||0,cyc=dp+t+rb+gap,k=Math.ceil(cyc/r.iv-1e-9);tot+=k;
+    rows+=`<tr><td><span class="sw" style="background:${cl(i)}"></span>${esc(r.n)}${names.length>1?'<br><small class="note">'+names.map(esc).join('→')+'</small>':''}</td><td>${Math.round(dp)}秒</td><td>${Math.round(t)}秒</td><td>${Math.round(rb+gap)}秒</td><td><b>${(cyc/60).toFixed(1)}分</b></td><td>${Math.round(r.iv)}秒</td><td><b>${k}編成</b></td></tr>`});
+  el.innerHTML=rows?`<div class="mxw"><table class="pt"><tr><th>系統</th><th>出庫→始発</th><th>走行・折返し</th><th>着庫＋余裕</th><th>周回</th><th>間隔</th><th>必要</th></tr>${rows}<tr><td colspan="6"><b>車庫に必要な合計</b></td><td><b>${tot}編成</b></td></tr></table></div>`:'<p class="note">出庫する系統がありません。</p>'}
+function updDep(){fleetCalc();S.rt.forEach((r,i)=>{const e=$('ds'+i);if(e)e.value=r.iv>0?(depStr(r)||'入力エラー'):''})}
 function copy(t,b){const done=()=>{if(b){const o=b.textContent;b.textContent='コピーしました';setTimeout(()=>b.textContent=o,1200)}};
   (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(done,()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(e){}a.remove()})}
 $('dep').oninput=e=>{const t=e.target,c=t.closest('.dp');if(!c||!t.dataset.k)return;S.rt[c.dataset.i][t.dataset.k]=t.type=='number'?+t.value:t.value;calc()};
 $('dep').onclick=e=>{const b=e.target.closest('button');if(b)copy($('ds'+b.closest('.dp').dataset.i).value,b)};
+$('gap').oninput=()=>{try{localStorage.setItem(KEY+'-gap',$('gap').value)}catch(e){}fleetCalc()};
 $('depall').onclick=e=>copy(S.rt.map((r,i)=>r.iv>0?r.n+'\t'+$('ds'+i).value:'').filter(Boolean).join('\n'),e.target);
 // 停車駅の指定は、その系統の経路上の駅番号（始発が1）で行う
 function fmtStops(r){const ids=r._ids||[],ix=ids.map((id,i)=>r.stops.has(id)?i+1:0).filter(Boolean),o=[];
@@ -764,7 +776,7 @@ $('upd').onclick=()=>{clearTimeout(ct);$('stat').textContent='計算中…';setT
 $('auto').onchange=()=>{if($('auto').checked)calc();else save()};
 function setTab(t){if(!['st','rt','pf','dp'].includes(t))t='st';document.querySelectorAll('.pane').forEach(p=>p.hidden=p.dataset.t!=t);$('tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));try{localStorage.setItem(KEY+'-tab',t)}catch(e){}}
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.t)};
-$('one').onchange=$('uni').onchange=calc;$('pfonly').onchange=()=>{if(RT)pfTable(dispPath())};
+$('one').onchange=$('uni').onchange=$('sep').onchange=calc;$('pfonly').onchange=()=>{if(RT)pfTable(dispPath())};
 let t0='st';try{t0=localStorage.getItem(KEY+'-tab')||'st'}catch(e){}
 load();setTab(t0);renderSt();renderRt();calcNow();
 
