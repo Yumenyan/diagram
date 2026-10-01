@@ -26,7 +26,17 @@ button.pri{background:var(--ac);color:#fff}
 button.x{border:0;color:var(--mut);padding:2px 6px;background:none}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
 textarea{width:100%;min-height:70px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--fg);background:#f7fbff;border:1px solid var(--bd);border-radius:6px;padding:6px}
-.sr{display:grid;grid-template-columns:18px minmax(0,1fr) 74px 52px 34px 34px 24px;gap:4px;align-items:center;margin-bottom:4px}
+.sr{display:grid;grid-template-columns:22px minmax(0,1.3fr) minmax(0,1fr) 40px 40px 46px 24px;gap:3px 4px;align-items:center;margin-bottom:2px}
+.srow{border-bottom:1px dashed var(--bd);padding-bottom:5px;margin-bottom:5px}
+.sr:not(.hd)>:nth-child(1){grid-row:1;grid-column:1}
+.sr:not(.hd)>:nth-child(2){grid-row:1;grid-column:2/7}
+.sr:not(.hd)>:nth-child(8){grid-row:1;grid-column:7}
+.sr:not(.hd)>:nth-child(n+3):nth-child(-n+7){grid-row:2}
+.sr:not(.hd)>:nth-child(3){grid-column:2}
+.sr:not(.hd)>:nth-child(4){grid-column:3}
+.sr:not(.hd)>:nth-child(5),.sr:not(.hd)>:nth-child(6),.sr:not(.hd)>:nth-child(7){justify-self:center}
+.sr:not(.hd)>:nth-child(5){grid-column:4}.sr:not(.hd)>:nth-child(6){grid-column:5}.sr:not(.hd)>:nth-child(7){grid-column:6}
+.sr.hd>*{text-align:center}
 .sr.hd{font-size:11px;color:var(--mut)}
 .zr{display:flex;gap:4px;align-items:center;font-size:11px;color:var(--mut);margin:0 0 4px 12px}
 .zr input{width:62px}
@@ -128,7 +138,7 @@ details.more>summary,details.help>summary{cursor:pointer;font-size:12px;color:va
 <button id="bulkb" style="margin-top:6px">反映する</button></details>
 <div id="impmsg" class="note"></div>
 <p class="note" style="margin:6px 0">左端の番号を押すと、その区間の低速区間・複々線の設定が開きます。</p>
-<div class="sr hd" id="shd"><span>#</span><span>駅名</span><span>次駅まで m</span><span>km/h</span><span><button class="th" data-a="allp" title="全部オン/オフ">↓待避</button></span><span><button class="th" data-a="allpu" title="全部オン/オフ">↑待避</button></span><span></span></div>
+<div class="sr hd" id="shd"><span></span><span style="text-align:left">次駅まで m</span><span style="text-align:left">km/h</span><span><button class="th" data-a="allp" title="全部オン/オフ">↓待避</button></span><span><button class="th" data-a="allpu" title="全部オン/オフ">↑待避</button></span><span title="次駅まで複々線（待避なしで追い越し可）">複々線</span><span></span></div>
 <div id="stl"></div>
 <button id="addline">＋ 路線を追加</button>
 </section>
@@ -146,7 +156,6 @@ details.more>summary,details.help>summary{cursor:pointer;font-size:12px;color:va
 <div class="rl">
 <label><input type="checkbox" id="one" checked><span><b>待避ホームは各駅・各方向1本</b><br><small>同じ駅・同じ方向で待避させる系統は1系統だけにします。ほかの系統は別の駅に振り分けます。</small></span></label>
 <label><input type="checkbox" id="uni" checked><span><b>同じホームの停車時間を統一</b><br><small>MTRmodはホームごとに停車時間を1つしか設定できません。同じ駅・同じ方向のホームに停まる系統は、待避するかどうかに関係なく、いちばん長い停車時間にそろえます。</small></span></label>
-<label><input type="checkbox" id="sep"><span><b>待避線を専用ホームとして扱う</b><br><small>待避する系統だけが入る待避線があり、通過待ちをしない系統は別の線路に入る駅の場合だけオンにします。オンのときは待避線と本線を別のホームとして停車時間を統一します（初期はオフ＝同じ駅・方向は全系統が同じホーム）。</small></span></label>
 </div>
 <div class="set">
 <div><label for="mp">退避前の余裕 秒</label><input id="mp" type="number" value="10" step="1" min="0"></div>
@@ -218,7 +227,7 @@ details.more>summary,details.help>summary{cursor:pointer;font-size:12px;color:va
 const $=i=>document.getElementById(i),COL=['#0ea5e9','#f97316','#22c55e','#a855f7','#ec4899','#eab308'];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
-let uid=1,RT,TR,CR,W,acc,dec,MG,BL,MP,CAP,MET={d:0,bad:0,tight:0},EXID=new Map,EC=new Map,RUNC=new Map,GM=new Map,EMAP=new Map,ONE=1,UNI=1,SEP=0,BAN=new Set,banSig='',WSET=new Set,PL=new Map,CNM=new Map,OPEN=new Set;const KEY='mtr-diagram-v2';
+let uid=1,RT,TR,CR,W,acc,dec,MG,BL,MP,CAP,MET={d:0,bad:0,tight:0},EXID=new Map,EC=new Map,RUNC=new Map,GM=new Map,EMAP=new Map,ONE=1,UNI=1,HW=[],PC=new Map,BAN=new Set,banSig='',WSET=new Set,PL=new Map,CNM=new Map,OPEN=new Set;const KEY='mtr-diagram-v2';
 // ネットワーク: st=駅(点)、ed=区間(線。a→bの向きで低速区間を持つ)、ln=路線(CSV1本=駅の並び)、rt=系統(始発・終着・経由で経路が決まる)
 const S={st:[],ed:[],ln:[],rt:[],cn:[],dp:'r:0',demo:0};
 const cl=i=>(S.rt[i]&&S.rt[i].c)||COL[i%6];
@@ -311,7 +320,7 @@ function renderSt(){
   $('stl').innerHTML=S.ln.map((L,li)=>{
     const rows=L.ids.map((id,i)=>{const s=stn(id),last=i==L.ids.length-1,e=last?null:edgeOf(id,L.ids[i+1]),fwd=!!e&&e.a==id,oth=S.ln.filter(M=>M!==L&&M.ids.includes(id));
       const zs=e?zView(e,fwd).map((z,j)=>`<div class="zr">低速 手前から<input type="number" value="${z.at}" data-k="at" data-z="${j}">m 長さ<input type="number" value="${z.len}" data-k="len" data-z="${j}">m<input type="number" value="${z.v}" data-k="v" data-z="${j}">km/h<button class="x" data-a="zdel" data-z="${j}" aria-label="低速区間を削除">✕</button></div>`).join(''):'';
-      return `<div class="srow" data-l="${li}" data-i="${i}"><div class="sr"><button class="ixb${e&&(e.q||e.z.length)?' has':''}" data-a="dtog" ${last?'disabled':''} title="詳細（低速区間・複々線）">${i+1}</button><input value="${esc(s.n)}" data-k="n" aria-label="駅名"><input type="number" value="${e?e.d:0}" data-k="d" ${last?'disabled':''} aria-label="次駅までの距離"><input type="number" value="${e?e.v:0}" data-k="v" ${last?'disabled':''} aria-label="速度"><input type="checkbox" ${s.p?'checked':''} data-k="p" aria-label="下りで待避できる"><input type="checkbox" ${s.pu?'checked':''} data-k="pu" aria-label="上りで待避できる"><button class="x" data-a="del" aria-label="この路線から駅を外す">✕</button></div>${oth.length?`<div class="shr">共有駅（${oth.map(M=>esc(M.n)).join('・')}と結合）<button class="sm" data-a="split">この路線だけ別の駅にする</button></div>`:''}${last||!OPEN.has(L.id+':'+id)?'':`<div class="dt">${zs}<label class="qrow"><input type="checkbox" ${e&&e.q?'checked':''} data-k="q">次駅まで複々線（待避なしで追い越し可）</label><button class="zb" data-a="zadd">＋ 低速区間（カーブなど）</button></div>`}</div>`}).join('');
+      return `<div class="srow" data-l="${li}" data-i="${i}"><div class="sr"><button class="ixb${(e&&e.z.length)||s.sp?' has':''}" data-a="dtog" title="詳細（低速区間・待避線の設定）">${i+1}</button><input value="${esc(s.n)}" data-k="n" aria-label="駅名"><input type="number" value="${e?e.d:0}" data-k="d" ${last?'disabled':''} aria-label="次駅までの距離"><input type="number" value="${e?e.v:0}" data-k="v" ${last?'disabled':''} aria-label="速度"><input type="checkbox" ${s.p?'checked':''} data-k="p" aria-label="下りで待避できる"><input type="checkbox" ${s.pu?'checked':''} data-k="pu" aria-label="上りで待避できる"><input type="checkbox" ${e&&e.q?'checked':''} data-k="q" ${last?'disabled':''} aria-label="次駅まで複々線" title="次駅まで複々線"><button class="x" data-a="del" aria-label="この路線から駅を外す">✕</button></div>${oth.length?`<div class="shr">共有駅（${oth.map(M=>esc(M.n)).join('・')}と結合）<button class="sm" data-a="split">この路線だけ別の駅にする</button></div>`:''}${!OPEN.has(L.id+':'+id)?'':`<div class="dt"><label class="qrow"><input type="checkbox" ${s.sp?'checked':''} data-k="sp">待避線は待避する系統専用（待避しない系統は別の線路・別ホームに入る）</label>${last?'':zs+`<button class="zb" data-a="zadd">＋ 低速区間（カーブなど）</button>`}</div>`}</div>`}).join('');
     return `<div class="ln" data-l="${li}"><div class="lh"><input value="${esc(L.n)}" data-ln="1" aria-label="路線名"><span class="note">${L.ids.length}駅</span>${S.ln.length>1?'<button class="x" data-a="delline" aria-label="路線を削除">✕</button>':''}</div>${rows}<button data-a="addst" class="zb" style="margin-left:0">＋ 駅を追加</button></div>`}).join('');
   fillDp();
 }
@@ -320,7 +329,7 @@ $('stl').oninput=e=>{const t=e.target,ln=t.closest('.ln');if(!ln)return;
   const r=t.closest('.srow'),k=t.dataset.k;if(!r||!k)return;
   const L=S.ln[+r.dataset.l],i=+r.dataset.i,id=L.ids[i],s=stn(id),v=t.type=='checkbox'?t.checked:t.type=='number'?+t.value:t.value;
   if(k=='n'){s.n=v;s.k=keyOf(v);calc();return}
-  if(k=='p'||k=='pu'){s[k]=v?1:0;calc();return}
+  if(k=='p'||k=='pu'||k=='sp'){s[k]=v?1:0;calc();return}
   const e2=edgeOf(id,L.ids[i+1]);if(!e2)return;
   if(t.dataset.z!==undefined){const zz=e2.z[+t.dataset.z],f=e2.a==id;let at=f?zz.at:e2.d-zz.at-zz.len,len=zz.len,vv=zz.v;
     if(k=='at')at=v;else if(k=='len')len=v;else vv=v;zz.len=len;zz.v=vv;zz.at=f?at:e2.d-at-len}
@@ -411,7 +420,7 @@ function model(){
   if(!(acc>0&&dec>0))throw'加速度と減速度は正の数にしてください。';
   if(!S.rt.length)throw'系統を1つ以上作ってください。';
   EXID=new Map;EC=new Map;RUNC=new Map;const adj=graphAdj();S.rt.forEach(r=>r._ids=routePath(r,adj));
-  RT=S.rt.map(buildRoute);ONE=$('one').checked;UNI=$('uni').checked;SEP=$('sep').checked;CNM=new Map;(S.cn||[]).forEach(c=>{const k=c.x+'_'+c.y;if(!CNM.has(k))CNM.set(k,[]);CNM.get(k).push(c)});
+  RT=S.rt.map(buildRoute);ONE=$('one').checked;UNI=$('uni').checked;CNM=new Map;(S.cn||[]).forEach(c=>{const k=c.x+'_'+c.y;if(!CNM.has(k))CNM.set(k,[]);CNM.get(k).push(c)});
   if(!RT.some(r=>r.iv>0))throw'出庫間隔が0より大きい系統を1つ以上作ってください。';
   RT.forEach(useEx);
   const wm=+$('win').value||0;
@@ -536,7 +545,7 @@ function entry(g){
 // ホーム(駅×方向×待避/本線)ごとに、停まる系統と実効停車秒数をまとめる
 function platGroups(){const P=new Map;
   RT.forEach(r=>{for(let k=1;k<r.ids.length-1;k++){const nk=r.si[k];if(!r.stops.has(nk))continue;
-    const dir=r.fw[k]?1:0,w=WSET.has(r.ri+'_'+nk),key=r.ids[k]+'|'+dir+(SEP?'|'+(w?'W':'M'):'');
+    const dir=r.fw[k]?1:0,w=WSET.has(r.ri+'_'+nk),sp=!!stn(r.ids[k]).sp,key=r.ids[k]+'|'+dir+(sp?'|'+(w?'W':'M'):'');
     let g=P.get(key);if(!g){g={id:r.ids[k],dir,w:false,rs:[]};P.set(key,g)}
     if(w)g.w=true;g.rs.push({r,k,nk,w,eff:r.dw+(r.ex[nk]||0)})}});
   return P}
@@ -544,14 +553,23 @@ function platGroups(){const P=new Map;
 function inner(){
   RT.forEach(r=>{r.ex={}});let G;
   for(let it=0;it<=14;it++){
-    sim();G=collect(false);const add={};WSET=new Set;
+    sim();G=collect(false);const add={};WSET=new Set;const CX=new Set;
     G.forEach(g=>entry(g).ev.forEach(q=>{
       if(q.sk!==undefined&&!q.bad&&!q.quad)WSET.add(q.yr+'_'+q.g);
-      if(q.need>.05){const k=q.yr+'_'+q.g;if(!(add[k]>q.need))add[k]=q.need}
-      if(q.cx){const r=RT[q.cx.ri],cur=r.dw+(r.ex[q.cx.nk]||0);if(q.cx.t>cur+.05){const k=q.cx.ri+'_'+q.cx.nk,nd=q.cx.t-cur;if(!(add[k]>nd))add[k]=nd}}}));
-    if(UNI)platGroups().forEach(gp=>{if(gp.rs.length<2)return;const mx=Math.max(...gp.rs.map(x=>x.eff));
-      gp.rs.forEach(x=>{if(x.eff<mx-.05){const k=x.r.ri+'_'+x.nk;if(!(add[k]>mx-x.eff))add[k]=mx-x.eff}})});
-    const ks=Object.keys(add);if(!ks.length||it==14)break;
+      if(q.cx&&!q.bad)CX.add(q.cx.ri+'_'+q.cx.nk)}));
+    // 停車時間を変えてよいのは「待避する駅」「乗換の優等」「待避ホームに停まる全系統(MTRのホーム停車時間をそろえるため)」だけ
+    const ok=new Set([...WSET,...CX]);
+    if(UNI)platGroups().forEach(gp=>{if(gp.w)gp.rs.forEach(x=>ok.add(x.r.ri+'_'+x.nk))});
+    let pruned=false;RT.forEach(r=>Object.keys(r.ex).forEach(b=>{if(!ok.has(r.ri+'_'+b)){delete r.ex[b];pruned=true}}));
+    if(!pruned){
+      G.forEach(g=>entry(g).ev.forEach(q=>{
+        if(q.need>.05){const k=q.yr+'_'+q.g;if(!(add[k]>q.need))add[k]=q.need}
+        if(q.cx){const r=RT[q.cx.ri],cur=r.dw+(r.ex[q.cx.nk]||0);if(q.cx.t>cur+.05){const k=q.cx.ri+'_'+q.cx.nk,nd=q.cx.t-cur;if(!(add[k]>nd))add[k]=nd}}}));
+      if(UNI)platGroups().forEach(gp=>{if(!gp.w||gp.rs.length<2)return;const mx=Math.max(...gp.rs.map(x=>x.eff));
+        gp.rs.forEach(x=>{if(x.eff<mx-.05){const k=x.r.ri+'_'+x.nk;if(!(add[k]>mx-x.eff))add[k]=mx-x.eff}})});
+    }
+    const ks=Object.keys(add).filter(k=>ok.has(k));
+    if(it==14||(!ks.length&&!pruned)){if(pruned){sim();G=collect(false)}break}
     ks.forEach(k=>{const[a,b]=k.split('_'),r=RT[a];r.ex[b]=Math.min(600,Math.ceil((r.ex[b]||0)+add[k]-1e-6))});
   }
   return G}
@@ -559,6 +577,13 @@ function inner(){
 function conflicts(G){const h=new Map;
   G.forEach(g=>entry(g).ev.forEach(q=>{if(q.sk===undefined||q.bad||q.quad)return;const k=q.sk+'|'+q.wd;let m=h.get(k);if(!m){m=new Map;h.set(k,m)}m.set(q.yr,(m.get(q.yr)||0)+g.cnt)}));
   const out=[];h.forEach((m,k)=>{if(m.size>1)out.push([k,m])});return out}
+function headway(){HW=[];const tc=BL>0?Math.sqrt(2*BL/acc)+3:5,byR=RT.map(()=>[]);
+  TR.forEach(tr=>byR[tr.r].push(tr.sh));
+  platGroups().forEach(gp=>{const ev=[];
+    gp.rs.forEach(x=>{const xs=x.r.sx[x.k],p=x.r.pts,a=arr(p,xs),d=leave(p,xs);byR[x.r.ri].forEach(sh=>ev.push({a:a+sh,d:d+sh,r:x.r.ri}))});
+    if(ev.length<2)return;ev.sort((u,v)=>u.a-v.a);let mn=1e9,n=0;const rs=new Set;
+    for(let i=0;i+1<ev.length;i++){const g=ev[i+1].a-ev[i].d;if(g<tc){n++;if(g<mn)mn=g;rs.add(ev[i].r);rs.add(ev[i+1].r)}}
+    if(n)HW.push({id:gp.id,dir:gp.dir,w:gp.w,min:Math.max(0,mn),n,rs:[...rs],tc})})}
 function solve(full){
   BAN=new Set;banSig='';let G=inner();
   if(ONE)for(let p=0;p<8;p++){
@@ -571,6 +596,7 @@ function solve(full){
   RT.forEach(r=>Object.values(r.ex).forEach(e=>MET.d+=e*(cn[r.ri]||0)*3600/W));
   G.forEach(g=>entry(g).ev.forEach(q=>{if(q.bad)MET.bad+=g.cnt;if(q.tight)MET.tight+=g.cnt;if(q.cnmiss)MET.miss+=g.cnt}));
   if(ONE)MET.conf=conflicts(G).length;
+  headway();MET.hw=HW.reduce((q,h)=>q+h.n,0)*3600/W;
   if(full){PL=platGroups();CR=[];collect(true).forEach(g=>{const e=entry(g);g.ins.forEach(([A,B])=>e.ev.forEach(q=>{const X=q.xB?B:A,Y=q.xB?A:B;CR.push({...q,t:A.sh+q.s,X:X.id,Y:Y.id})}))})}
 }
 function metrics(){return MET}
@@ -610,6 +636,8 @@ function show(){
   Object.values(tg).forEach(q=>li+=`<li class="warn">${nm(RT[TR[q.X].r])}が${esc(stn(q.sk).n)}駅で${nm(RT[TR[q.Y].r])}を追い越す場面は、退避前の余裕が${Math.max(0,Math.round(q.gap))}秒しかなく（目標${MP}秒）、閉塞に詰まる可能性があります。出発ずらしの変更か、待避駅の追加を検討してください。</li>`);
   const cm={};CR.filter(q=>q.cnmiss).forEach(q=>cm[TR[q.X].r+'_'+TR[q.Y].r]=q);
   Object.values(cm).forEach(q=>li+=`<li class="warn">${nm(RT[TR[q.X].r])}と${nm(RT[TR[q.Y].r])}の接続を設定した駅では待避が成立しません。優等がその駅に停車しているか、その駅が待避駅（ホームあり）か、追い越し位置より手前かを確認してください。</li>`);
+  HW.forEach(h=>li+=`<li class="warn"><b>${esc(stn(h.id).n)}駅（${h.dir?'下り':'上り'}）</b>のホームで、${h.rs.map(i=>nm(RT[i])).join('・')}が前の列車の発車から${Math.round(h.min)}秒（目安${Math.round(h.tc)}秒未満）で次の列車が入り、閉塞が詰まる可能性があります（${h.n}か所）。<b>交互発着</b>（2つのホームに交互に入れる）にするか、出発ずらし・出庫間隔・停車時間を見直してください。</li>`);
+  PL.forEach(g=>{if(g.w||g.rs.length<2)return;const d=g.rs.map(x=>x.r.dw);if(Math.min(...d)!=Math.max(...d))li+=`<li class="warn"><b>${esc(stn(g.id).n)}駅（${g.dir?'下り':'上り'}）</b>は待避がありませんが、同じホームに停まる系統の基本停車が違います（${g.rs.map(x=>nm(x.r)+x.r.dw+'秒').join('・')}）。MTRmodでは同じホームで別の停車時間にできないため、基本停車をそろえてください。</li>`});
   if(MET.conf)li+=`<li class="warn">同じ駅・同じ方向で複数の系統が待避する箇所が${MET.conf}件残っています。待避駅を増やしてください。</li>`;
   if(!li)li='<li class="good">追い越しは発生していません。</li>';
   h+=`<ul>${li}</ul><p class="note">所要時間: ${RT.map(r=>`<span class="sw" style="background:${cl(r.ri)}"></span>${nm(r)} ${esc(stn(r.ids[0]).n)}→${esc(stn(r.ids[r.ids.length-1]).n)} ${fmt(r.T)}`).join('　')}</p>`;
@@ -622,7 +650,7 @@ function pfTable(D){const el=$('pft');if(!el)return;
   const mixed=g=>{const e=g.rs.map(x=>x.eff);return Math.min(...e)!=Math.max(...e)};
   el.innerHTML='<div class="mxw"><table class="pt"><tr><th>駅</th><th>方向</th><th>ホーム</th><th>停車</th><th>使う系統（基本→設定）</th></tr>'+rows.map(g=>{
     const ef=g.rs.map(x=>x.eff),mn=Math.min(...ef),mx=Math.max(...ef);
-    return `<tr><td>${esc(stn(g.id).n)}${cns.has(g.id)?' <span class="tag">接続</span>':''}</td><td>${g.dir?'下り':'上り'}</td><td><span class="tag${g.w?' sd':''}">${g.w?(SEP?'待避ホーム':'待避あり'):'本線ホーム'}</span></td><td><b>${mn==mx?mx+'秒':'<span class="warn">'+mn+'〜'+mx+'秒</span>'}</b></td><td>${g.rs.map(x=>`<span class="chipn"><span class="sw" style="background:${cl(x.r.ri)}"></span>${esc(x.r.n)} ${x.r.dw==x.eff?x.eff+'秒':x.r.dw+'→'+x.eff+'秒'}</span>`).join('')}</td></tr>`}).join('')+'</table></div><p class="note">MTRmodではホームごとに停車時間を1つしか設定できません。「停車」の秒数をそのホームに設定してください。</p>'+(rows.some(mixed)?'<p class="note warn">赤い秒数のホームは系統ごとに停車時間が違います。「同じホームの停車時間を統一」をオンにしてください。</p>':'')}
+    return `<tr><td>${esc(stn(g.id).n)}${cns.has(g.id)?' <span class="tag">接続</span>':''}</td><td>${g.dir?'下り':'上り'}</td><td><span class="tag${g.w?' sd':''}">${g.w?(stn(g.id).sp?'待避ホーム':'待避あり'):'本線ホーム'}</span></td><td>${HW.some(h=>h.id==g.id&&h.dir==g.dir&&h.w==g.w)?'<span class="tag sd">接近</span> ':''}<b>${mn==mx?mx+'秒':'<span class="warn">'+mn+'〜'+mx+'秒</span>'}</b></td><td>${g.rs.map(x=>`<span class="chipn"><span class="sw" style="background:${cl(x.r.ri)}"></span>${esc(x.r.n)} ${x.r.dw==x.eff?x.eff+'秒':x.r.dw+'→'+x.eff+'秒'}</span>`).join('')}</td></tr>`}).join('')+'</table></div><p class="note">MTRmodではホームごとに停車時間を1つしか設定できません。「停車」の秒数をそのホームに設定してください。</p>'+(rows.some(mixed)?'<p class="note warn">赤い秒数のホームは系統ごとに停車時間が違います。待避のない駅では停車時間を自動で変えないため、系統の基本停車をそろえてください。</p>':'')}
 // 系統の走行を、表示する経路の縦軸(距離)に対応づける
 function dmapOf(r,D){const sd=r.ids.map(id=>D.ix.has(id)?D.cx[D.ix.get(id)]:null);
   return{sd,ok:r.es.map((_,k)=>sd[k]!=null&&sd[k+1]!=null&&Math.abs(D.ix.get(r.ids[k])-D.ix.get(r.ids[k+1]))==1)}}
@@ -670,7 +698,7 @@ async function search(){
   srchRun=true;srchStop=false;btn.textContent='探索を中止';let n=0;
   const t0=performance.now(),LIM=20000,stop=()=>srchStop||performance.now()-t0>LIM; // 最大20秒
   const iv=i=>Math.max(1,Math.round(RT[i].iv)),cst=i=>Math.max(1,Math.round(iv(i)/60)),norm=(i,v)=>((Math.round(v)%iv(i))+iv(i))%iv(i);
-  const cost=o=>{RT.forEach((r,i)=>r.off=o[i]);solve(false);n++;return MET.d+MET.tight*3000+MET.bad*1e5+MET.conf*1e5+MET.miss*3000};
+  const cost=o=>{RT.forEach((r,i)=>r.off=o[i]);solve(false);n++;return MET.d+MET.tight*3000+MET.bad*1e5+MET.conf*1e5+MET.miss*3000+(MET.hw||0)*2500};
   const memo=new Map,costM=o=>{const k=o.join();let c=memo.get(k);if(c===undefined){c=cost(o);memo.set(k,c)}return c};
   let ly=performance.now();
   const tick=async()=>{if(performance.now()-ly>40){ly=performance.now();out.textContent='探索中… '+n+'通りを試しました（もう一度押すと中止）';await new Promise(r=>setTimeout(r))}};
@@ -691,11 +719,11 @@ async function search(){
   const cut=stop();srchRun=false;btn.textContent=lab;
   o.forEach((v,i)=>S.rt[i].off=v);renderRt();calcNow();
   const mt=metrics();
-  out.innerHTML=(mt.bad?'<span class="warn">待避できない交差が残りました。待避駅を増やすか系統の間隔を見直してください。</span><br>':'<span class="good">待避できない交差はありません。</span><br>')+(mt.tight?'<span class="warn">退避前の余裕が足りない追い越しが'+mt.tight+'件残りました。</span><br>':'')+'1時間あたりの合計遅れ: '+Math.round(mt.d)+'秒（'+n+'通りを比較'+(cut?'・時間切れか中止のため途中結果':'')+'）<br>'+S.rt.filter(r=>r.iv>0).map(r=>esc(r.n)+' '+r.off+'秒').join(' / ');
+  out.innerHTML=(mt.bad?'<span class="warn">待避できない交差が残りました。待避駅を増やすか系統の間隔を見直してください。</span><br>':'<span class="good">待避できない交差はありません。</span><br>')+(mt.tight?'<span class="warn">退避前の余裕が足りない追い越しが'+mt.tight+'件残りました。</span><br>':'')+(mt.hw>0?'<span class="warn">同じホームで列車が接近する箇所（交互発着が必要）が1時間あたり約'+Math.round(mt.hw)+'回残りました。出庫間隔や停車時間の見直しが必要です。</span><br>':'<span class="good">同じホームで閉塞が詰まる接近はありません。</span><br>')+'1時間あたりの合計遅れ: '+Math.round(mt.d)+'秒（'+n+'通りを比較'+(cut?'・時間切れか中止のため途中結果':'')+'）<br>'+S.rt.filter(r=>r.iv>0).map(r=>esc(r.n)+' '+r.off+'秒').join(' / ');
 }
 $('srch').onclick=search;
 addEventListener('resize',draw);
-function save(){try{localStorage.setItem(KEY,JSON.stringify({v:4,st:S.st,ed:S.ed,ln:S.ln,dp:S.dp,cn:S.cn,one:$('one').checked,uni:$('uni').checked,sep:$('sep').checked,demo:S.demo,rt:S.rt.map(r=>{const{_ids,...o}=r;return{...o,stops:[...r.stops]}}),acc:$('acc').value,dec:$('dec').value,mg:$('mg').value,win:$('win').value,bl:$('bl').value,mp:$('mp').value,cap:$('cap').value,base:$('base').value,lastT:$('lastT').value,gap:$('gap').value,auto:$('auto').checked,strict:$('strict').checked,zx:$('zx').value,zy:$('zy').value,eq:$('eq').checked}))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({v:4,st:S.st,ed:S.ed,ln:S.ln,dp:S.dp,cn:S.cn,one:$('one').checked,uni:$('uni').checked,demo:S.demo,rt:S.rt.map(r=>{const{_ids,...o}=r;return{...o,stops:[...r.stops]}}),acc:$('acc').value,dec:$('dec').value,mg:$('mg').value,win:$('win').value,bl:$('bl').value,mp:$('mp').value,cap:$('cap').value,base:$('base').value,lastT:$('lastT').value,gap:$('gap').value,auto:$('auto').checked,strict:$('strict').checked,zx:$('zx').value,zy:$('zy').value,eq:$('eq').checked}))}catch(e){}}
 function fromLegacy(j){ // 旧バージョン(1本の直線)の保存データを変換する
   uid=1+Math.max(0,...j.st.map(s=>s.id));
   S.st=j.st.map(s=>({id:s.id,n:s.n,k:keyOf(s.n),p:s.p?1:0,pu:(s.pu===undefined?s.p:s.pu)?1:0}));
@@ -710,7 +738,7 @@ function load(){let ok=false;
         uid=1+Math.max(0,...S.st.map(s=>s.id),...S.ln.map(l=>l.id))}
       else{if((j.v||0)<3)j.win='0';fromLegacy(j)}
       ['acc','dec','mg','win','bl','mp','cap','base','lastT'].forEach(k=>{if(j[k]!==undefined)$(k).value=j[k]});
-      if(j.gap!==undefined)$('gap').value=j.gap;if(j.one!==undefined)$('one').checked=j.one;if(j.uni!==undefined)$('uni').checked=j.uni;if(j.sep!==undefined)$('sep').checked=j.sep;if(j.auto!==undefined)$('auto').checked=j.auto;if(j.strict!==undefined)$('strict').checked=j.strict;if(j.zx)$('zx').value=j.zx;if(j.zy)$('zy').value=j.zy;if(j.eq!==undefined)$('eq').checked=j.eq;ok=S.ln.length>0&&S.rt.length>0}}catch(e){ok=false}
+      if(j.gap!==undefined)$('gap').value=j.gap;if(j.one!==undefined)$('one').checked=j.one;if(j.uni!==undefined)$('uni').checked=j.uni;if(j.auto!==undefined)$('auto').checked=j.auto;if(j.strict!==undefined)$('strict').checked=j.strict;if(j.zx)$('zx').value=j.zx;if(j.zy)$('zy').value=j.zy;if(j.eq!==undefined)$('eq').checked=j.eq;ok=S.ln.length>0&&S.rt.length>0}}catch(e){ok=false}
   if(!ok)demo();touch()}
 $('rst').onclick=()=>{const b=$('rst');if(b.dataset.a){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}else{b.dataset.a=1;b.textContent='もう一度押すと初期化します';setTimeout(()=>{delete b.dataset.a;b.textContent='初期状態に戻す'},3000)}};
 const pt=t=>{const m=/^\s*(\d+):(\d{1,2})(?::(\d{1,2}))?\s*$/.exec(t||'');return m?+m[1]*3600+ +m[2]*60+ +(m[3]||0):NaN};
@@ -776,7 +804,7 @@ $('upd').onclick=()=>{clearTimeout(ct);$('stat').textContent='計算中…';setT
 $('auto').onchange=()=>{if($('auto').checked)calc();else save()};
 function setTab(t){if(!['st','rt','pf','dp'].includes(t))t='st';document.querySelectorAll('.pane').forEach(p=>p.hidden=p.dataset.t!=t);$('tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));try{localStorage.setItem(KEY+'-tab',t)}catch(e){}}
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.t)};
-$('one').onchange=$('uni').onchange=$('sep').onchange=calc;$('pfonly').onchange=()=>{if(RT)pfTable(dispPath())};
+$('one').onchange=$('uni').onchange=calc;$('pfonly').onchange=()=>{if(RT)pfTable(dispPath())};
 let t0='st';try{t0=localStorage.getItem(KEY+'-tab')||'st'}catch(e){}
 load();setTab(t0);renderSt();renderRt();calcNow();
 
