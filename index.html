@@ -237,6 +237,92 @@
       font: 700 17px var(--jp)
     }
 
+    .tb.hk .c {
+      background: var(--blue)
+    }
+
+    .hkbox {
+      flex-basis: 100%;
+      background: #eef6ff;
+      border-radius: 12px;
+      padding: 10px 12px
+    }
+
+    .hkbox b {
+      color: var(--blue2, #1f7ad1);
+      font: 700 14px var(--jp)
+    }
+
+    .hkg {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px
+    }
+
+    .spdpop {
+      position: fixed;
+      z-index: 60;
+      width: 290px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .18);
+      padding: 12px 14px;
+      display: grid;
+      gap: 8px;
+      font: 700 13px var(--jp)
+    }
+
+    .spdpop.hide {
+      display: none
+    }
+
+    .spdpop input,
+    .rng {
+      width: 100%;
+      accent-color: var(--green)
+    }
+
+    .spdpop .pill {
+      padding: 4px 8px;
+      font-size: 12px
+    }
+
+    .spdt {
+      position: relative;
+      height: 18px;
+      width: 100%;
+      margin-top: -2px;
+      font: 700 11px var(--en);
+      color: var(--sub)
+    }
+
+    .spdt span {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      white-space: nowrap
+    }
+
+    .spdt span::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: -5px;
+      width: 1px;
+      height: 4px;
+      background: #bbb
+    }
+
+    .spdpop #spdq .spdt {
+      flex-basis: 100%;
+      margin: -6px 0 4px
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      width: 16px;
+      height: 16px
+    }
+
     @media (max-width:1100px) {
       #app {
         grid-template-columns: minmax(0, 1fr) 440px
@@ -320,8 +406,8 @@
       display: inline-grid;
       place-items: center;
       flex: none;
-      font-family: var(--en);
-      font-weight: 700;
+      font-family: var(--nf, var(--en));
+      font-weight: var(--nfw, 700);
       line-height: 1;
       transition: transform .15s, box-shadow .2s
     }
@@ -624,8 +710,8 @@
       display: inline-grid;
       place-items: center;
       align-content: center;
-      font-family: var(--en);
-      font-weight: 700;
+      font-family: var(--nf, var(--en));
+      font-weight: var(--nfw, 700);
       line-height: .95;
       text-align: center;
       flex: none;
@@ -1762,6 +1848,11 @@
                 transform="translate(-1 0)" />
             </svg></span><span style="color:var(--gray)">運行設定</span></button>
       </div>
+      <div class="spdpop hide" id="spdpop">
+        <div class="row sp"><b>シミュレーションの速さ</b><b class="en" id="spdv"></b></div><input type="range" id="spdr" min="0"
+          max="1000" step="1">
+        <div class="row" style="gap:4px;flex-wrap:wrap" id="spdq"></div>
+      </div>
       <div class="clock"><small>運行時刻<button id="daysel" class="daych" title="押すと平日・土曜・日祝のダイヤを切り替え"></button></small><b
           id="clk">--:--</b></div>
       <div class="stat" id="stat"></div>
@@ -1800,7 +1891,7 @@
   <script>
     'use strict';
     // =====================================================================
-    //  Diagram Simulator v1.2.0  — 状態・ネットワーク・ホーム割り当て・移行
+    //  Diagram Simulator v1.3.0  — 状態・ネットワーク・ホーム割り当て・移行
     // =====================================================================
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1809,7 +1900,7 @@
     const LPAL = ['#cb6ce6', '#ff751f', '#0489e1', '#7ed957', '#ff5757', '#ffbd59', '#5ce1e6', '#8c52ff', '#ff66c4', '#000000', '#737373', '#00bf63'];
     // 線路の種類: 本線・急行線は内側、緩行線・待避線は外側（待避や各停用）、通過線はホームのない線路
     const TRK = { M: '本線', X: '急行線', L: '緩行線', S: '待避線', P: '通過線' };
-    const APP = { name: 'Diagram Simulator', ver: '1.2.0' };
+    const APP = { name: 'Diagram Simulator', ver: '1.3.0' };
     const MKS = { ring: '丸（枠）', fill: '四角（塗り）', sqr: '四角（枠）', dot: '丸（塗り）' };
     const outerT = t => t === 'S' || t === 'L';
     let uid = 1;
@@ -1823,8 +1914,6 @@
       mode: 'mtr', slack: 3, hold: true, dwr: 20,
       // 緩急接続: 待避は優等が停まる駅を優先（増やしてよい待ち時間・接続の最低停車）
       xauto: true, xmax: 120, xmin: 0,
-      // 列車間隔: 再計算で駅ごとの発車間隔のばらつきをどれだけ重く見るか（0=見ない）、待避で残す余裕、間隔調整のための待避の延長
-      regw: 1, ovm: 30, hadj: true,
       wfrom: '', wto: '', stime: 20
     };
     const S = { v: 6, name: '', lines: [], st: [], ed: [], ty: [], cn: [], cur: 0, days: [], day: null, cfg: { ...CFG0 } };
@@ -1834,7 +1923,7 @@
     const opOnDay = op => !op.days || !op.days.length || op.days.includes(S.day);
     const C = () => S.cfg;
     const REAL = () => S.cfg.mode === 'real';
-    let GM = new Map, EMAP = new Map, TYM = new Map, LNM = new Map, PFM = new Map, VPF = new Map, ADJ = null;
+    let TERMTY = new Map, GM = new Map, EMAP = new Map, TYM = new Map, LNM = new Map, PFM = new Map, VPF = new Map, ADJ = null;
 
     function touch() {
       GM = new Map(S.st.map(s => [s.id, s]));
@@ -1949,9 +2038,18 @@
       if (!p) { p = { id: 'v' + k, sid, n: lane === 'X' ? '通過線（ホームなし）' : '未設定のホーム', dir, trk: lane === 'X' ? 'P' : 'M', dw: 10, tdw: 90, turn: 1, types: null, virtual: 1 }; VPF.set(k, p); PFM.set(p.id, p) }
       return p;
     }
-    function resolvePf(sid, dir, ln, ty) {
-      const key = sid + '|' + dir + '|' + ln + '|' + ty.id; let p = PFC.get(key); if (p) return p;
-      const s = stn(sid), stop = ty.stops.has(sid), c0 = (s.pf || []).filter(p => (p.dir === dir || p.dir === 'b') && (!p.ln || p.ln === ln));
+    function resolvePf(sid, dir, ln, ty, term) {
+      const key = sid + '|' + dir + '|' + ln + '|' + ty.id + (term ? '|t' : ''); let p = PFC.get(key); if (p) return p;
+      const s = stn(sid), stop = term || ty.stops.has(sid), c0 = (s.pf || []).filter(p => (p.dir === dir || p.dir === 'b') && (!p.ln || p.ln === ln));
+      // 終着（始発）駅: 折り返しに指定したホームの中で、種別ごとに分ける（MTRモードは種別ごとに固定。現実モードは列車ごとに空いているホームへ振り直す）
+      if (term) {
+        const tp = c0.filter(p => +p.turn > 0 && p.trk !== 'P');
+        if (tp.length) {
+          p = tp.find(p => p.types && p.types.includes(ty.id));
+          if (!p) { const free = tp.filter(p => !p.types), pool = free.length ? free : tp, l = TERMTY.get(sid) || [], i = Math.max(0, l.indexOf(ty.id)); p = pool[i % pool.length] }
+          PFC.set(key, p); return p;
+        }
+      }
       // 停まる列車は通過線（ホームなし）に入れない。通過する列車は通過線があればそこを通る
       const c = stop ? c0.filter(p => p.trk !== 'P') : c0;
       p = c.find(p => p.types && p.types.includes(ty.id));
@@ -1980,9 +2078,42 @@
       opt = opt || {}; size = size || 88; const c = L ? L.c : '#999', code = L ? L.code : '?', mk = (L && L.mk) || 'ring';
       const br = mk === 'sqr' || mk === 'fill' ? Math.round(size * .14) + 'px' : '50%', fillBg = mk === 'fill' || mk === 'dot';
       const bw = Math.max(2, Math.round(size * .115)), fs1 = num != null ? size * .27 : size * (code.length > 2 ? .3 : code.length > 1 ? .4 : .5), fs2 = size * .3;
-      const st = `width:${size}px;height:${size}px;border-radius:${br};${fillBg ? `background:${c};color:#fff;` : `background:#fff;border:${bw}px solid ${c};color:#000;`}`;
+      const st = `width:${size}px;height:${size}px;border-radius:${br};${fillBg ? `background:${c};color:#fff;` : `background:#fff;border:${bw}px solid ${c};color:#000;`}` + lineNfCss(L);
       const tag = opt.btn ? 'button' : 'span', at = opt.btn ? ` data-ln="${L ? L.id : ''}" title="${esc(L ? L.n : '')}"` : '';
-      return `<${tag} class="${num != null ? 'smk' : 'lmk'}"${at} style="${st}">` + (num != null ? `<span style="font-size:${fs1}px;line-height:.95;letter-spacing:.02em">${esc(code)}</span><span style="font-size:${fs2}px;line-height:1.05">${esc(num)}</span>` : `<span style="font-size:${fs1}px;letter-spacing:.02em">${esc(code)}</span>`) + `</${tag}>`;
+      const fz = v => `calc(${v.toFixed(2)}px * var(--nfs, 1))`;
+      return `<${tag} class="${num != null ? 'smk' : 'lmk'}"${at} style="${st}">` + (num != null ? `<span style="font-size:${fz(fs1)};line-height:.95;letter-spacing:var(--nfl, .02em)">${esc(code)}</span><span style="font-size:${fz(fs2)};line-height:1.05;letter-spacing:var(--nfl, 0em)">${esc(num)}</span>` : `<span style="font-size:${fz(fs1)};letter-spacing:var(--nfl, .02em)">${esc(code)}</span>`) + `</${tag}>`;
+    }
+    // ---- ナンバリングの文字（フォント名・Google Fonts・フォントファイル、太さ・大きさ・字間）。路線ごとに上書きできる（L.nf）
+    let NFLOADED = '';
+    const NFL = new Map;
+    const lineNfFam = L => { const f = L && L.nf; if (!f) return ''; return f.data ? 'DSNumL' + L.id : (f.font || '').trim() };
+    function lineNfCss(L) {
+      const f = L && L.nf; if (!f) return ''; let s = ''; const fam = lineNfFam(L);
+      if (fam) s += `--nf:'${fam.replace(/["'<>]/g, '')}', var(--en);`;
+      if (+f.w) s += `--nfw:${+f.w};`; if (+f.s) s += `--nfs:${+f.s / 100};`; if (f.l != null && f.l !== '') s += `--nfl:${+f.l}em;`;
+      return s;
+    }
+    function loadFontFace(fam, data, key) { if (NFL.get(fam) === key) return; NFL.set(fam, key); try { const f = new FontFace(fam, `url(${data})`); f.load().then(ff => { document.fonts.add(ff); typeof renderHeader === 'function' && renderHeader(); typeof renderStrip === 'function' && renderStrip() }).catch(() => toast('フォントファイルを読み込めませんでした')) } catch (e) { } }
+    function googleFont(id, fam, on) {
+      let l = document.getElementById(id);
+      if (on && fam) { const href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fam).replace(/%20/g, '+') + '&display=swap'; if (!l) { l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; document.head.appendChild(l) } if (l.href !== href) l.href = href }
+      else if (l) l.remove();
+    }
+    function applyNFont() {
+      const c = C(), root = document.documentElement.style; let fam = '';
+      if (c.nfdata) {
+        fam = 'DSNumFont';
+        if (NFLOADED !== c.nfdata.length + c.nffn) { NFLOADED = c.nfdata.length + c.nffn; try { const f = new FontFace('DSNumFont', `url(${c.nfdata})`); f.load().then(ff => { document.fonts.add(ff); renderHeader && renderHeader() }).catch(() => toast('フォントファイルを読み込めませんでした')) } catch (e) { } }
+      } else if (c.nfont) {
+        fam = c.nfont.trim();
+        let l = document.getElementById('nfgl');
+        if (c.nfg) { const href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fam).replace(/%20/g, '+') + '&display=swap'; if (!l) { l = document.createElement('link'); l.id = 'nfgl'; l.rel = 'stylesheet'; document.head.appendChild(l) } if (l.href !== href) l.href = href }
+        else if (l) l.remove();
+      }
+      S.lines.forEach(L => { const f = L.nf; if (!f) { googleFont('nfgl' + L.id, '', false); return } if (f.data) loadFontFace('DSNumL' + L.id, f.data, f.data.length + (f.fn || '')); googleFont('nfgl' + L.id, (f.font || '').trim(), !f.data && f.g) });
+      root.setProperty('--nf', fam ? `"${fam.replace(/"/g, '')}", var(--en)` : 'var(--en)');
+      root.setProperty('--nfw', String(+c.nfw || 700)); root.setProperty('--nfs', String((+c.nfs || 100) / 100));
+      if (c.nfl != null && c.nfl !== '') root.setProperty('--nfl', (+c.nfl) + 'em'); else root.removeProperty('--nfl');
     }
     const numOf = (s, L) => (s.num && L && s.num[L.id] != null && s.num[L.id] !== '') ? s.num[L.id] : null;
     function autoNumber(L, start, pad) { L.nst = start; L.pad = pad; L.ids.forEach((id, i) => { const s = stn(id); s.num = s.num || {}; s.num[L.id] = String(start + i).padStart(pad ? 2 : 1, '0') }) }
@@ -2003,6 +2134,25 @@
         (s.pf || []).forEach(p => { if (p.types) p.types = p.types.filter(t => tids.has(t)); if (p.ln && !LNM.has(p.ln)) p.ln = null });
         if (s.dep) s.dep.ops.forEach(op => op.legs.forEach(lg => { if (!ids.has(lg.from)) lg.from = f ? f[0] : null; if (!ids.has(lg.to)) lg.to = f ? f[f.length - 1] : null; lg.via = (lg.via || []).filter(i => ids.has(i)); if (!tids.has(lg.t)) lg.t = S.ty[0] && S.ty[0].id; if (lg.chg) { lg.chg = lg.chg.filter(q => tids.has(+q.t)).map(q => ({ ...q, from: q.from != null && !ids.has(+q.from) ? null : q.from, ln: q.ln != null && !LNM.has(+q.ln) ? null : q.ln })); if (!lg.chg.length) delete lg.chg } }));
       });
+    }
+    // 駅を別の路線へ移す（keep=true なら元の路線にも残して乗換駅にする）。after は移す先で前に来る駅（null なら先頭）
+    function moveStation(sid, fromId, toId, after, keep) {
+      const F = S.lines.find(L => L.id === fromId), T = S.lines.find(L => L.id === toId); if (!T || T.ids.includes(sid)) return '移す先の路線にはすでにこの駅があります';
+      if (F && !keep) {
+        const i = F.ids.indexOf(sid);
+        if (i >= 0) {
+          const a = F.ids[i - 1], b = F.ids[i + 1];
+          if (a != null && b != null && !lineEdgeAB(F, a, b)) { const e1 = lineEdgeAB(F, a, sid), e2 = lineEdgeAB(F, sid, b); mkEdge(a, b, F, (e1 ? e1.d : 1000) + (e2 ? e2.d : 1000), Math.min(e1 ? e1.v : 120, e2 ? e2.v : 120)) }
+          F.ids.splice(i, 1); const s = stn(sid); if (s.num) delete s.num[F.id]; (s.pf || []).forEach(p => { if (p.ln === F.id) p.ln = null });
+        }
+      }
+      const j = after == null ? 0 : T.ids.indexOf(after) + 1, a = j > 0 ? T.ids[j - 1] : null, b = j < T.ids.length ? T.ids[j] : null;
+      const old = a != null && b != null ? lineEdgeAB(T, a, b) : null;
+      touch();
+      if (a != null && !lineEdgeAB(T, a, sid)) mkEdge(a, sid, T, old ? Math.max(100, Math.round(old.d / 2)) : 1000, old ? old.v : 120);
+      if (b != null && !lineEdgeAB(T, sid, b)) mkEdge(sid, b, T, old ? Math.max(100, Math.round(old.d / 2)) : 1000, old ? old.v : 120);
+      T.ids.splice(j, 0, sid); touch(); prune(); ensurePlatforms(); touch();
+      return '';
     }
     function mergeInto(a, b) {
       S.lines.forEach(L => { L.ids = L.ids.map(i => i == a ? b : i).filter((i, k, ar) => k == 0 || i != ar[k - 1]) });
@@ -2041,6 +2191,7 @@
       uid = 1 + Math.max(0, ...S.st.map(s => s.id), ...S.lines.map(l => l.id), ...S.ty.map(t => t.id), ...S.ed.map(e => e.id || 0), ...(S.days || []).map(d => d.id), ...S.st.flatMap(s => (s.pf || []).map(p => p.id)), ...S.st.flatMap(s => s.dep ? s.dep.ops.map(o => o.id) : []));
       // v5 の「速達線」はホームのある本線だったので本線にする（v6 の通過線はホームのない線路）
       if ((j.v || 0) < 6) S.st.forEach(s => (s.pf || []).forEach(p => { if (p.trk === 'P') p.trk = 'M' }));
+      S.st.forEach(s => (s.pf || []).forEach(p => { delete p.hold }));   // v1.2.0 の間隔調整の延長は使わない
       ensureDays(); touch(); autoNames(); ensurePlatforms();
     }
     // 自動で付く方面名と同じ名前は、自動入力に戻す（向きを変えたときに追従させる）
@@ -2122,11 +2273,17 @@
     // =====================================================================
     let RT = [], TR = [], CR = [], OPS = [], W = 0, T0W = 0, T1W = 0, LIFE = 0, acc = 4, dec = 4, MG = 5, BL = 100, MP = 10, CAP = 0, TL = 120;
     let MET = { d: 0, bad: 0, tight: 0, miss: 0, hw: 0, blk: 0, fol: 0 }, EX = new Map, EXT = new Map, PFO = new Map, TDO = new Map, PRX = new Map, EC = new Map, RUNC = new Map, CNM = new Map;
-    let WAIT = new Map, HWL = [], WARN = [], LASTCALC = null, COMMIT = null;
+    let WAIT = new Map, HWL = [], WARN = [], LASTCALC = null, COMMIT = null, TPO = new Map;
     const LEGMAX = 200, TRMAX = 30000;
     const PD = pid => { const p = PFM.get(pid); return (p ? +p.dw || 0 : 10) + (EX.get(pid) || 0) };
     const tdwOf = p => TDO.has(p.id) ? TDO.get(p.id) : Math.max(0, +p.tdw || 0);
-    const turnDw = r => tdwOf(r.pf[r.ids.length - 1]);
+    // 折り返し: turn=1 はホームでそのまま折り返す。turn=2 は降車後に奥の引き上げ線へ入り、折り返して出発ホームへ戻る
+    // 引き上げ線の設定は駅ごと（s.hk: 引き上げ線までの時間 tin・戻る時間 tout・線の本数 n）。p.tdw は引き上げ線での停車
+    const hkOf = sid => { const s = GM.get(sid); if (!s) return { tin: 40, tout: 40, n: 1 }; if (!s.hk) s.hk = { tin: 40, tout: 40, n: 1 }; return s.hk };
+    const turnParts = p => { if (!p || +p.turn !== 2) return null; const h = hkOf(p.sid); return { a: Math.max(0, +(p.adw ?? 20) || 0), tin: Math.max(0, +h.tin || 0), w: tdwOf(p), tout: Math.max(0, +h.tout || 0), b: Math.max(0, +(p.bdw ?? 30) || 0), n: Math.max(1, Math.round(+h.n || 1)), sid: p.sid } };
+    const turnDw = r => { const p = r.pf[r.ids.length - 1], q = turnParts(p); return q ? q.a + q.tin + q.w + q.tout + q.b : tdwOf(p) };
+    // 引き上げ線を、ホームの接近と同じしくみで数えるための仮のホーム
+    function hkPf(sid) { const k = 'hk|' + sid; let p = VPF.get(k); if (!p) { p = { id: 'hk' + sid, sid, n: '引き上げ線', dir: 'b', trk: 'S', dw: 0, tdw: 0, turn: 0, types: null, virtual: 1, hk: 1 }; VPF.set(k, p); PFM.set(p.id, p) } return p }
     const legKey = lg => lg.t + '|' + lg.from + '|' + lg.to + '|' + (lg.via || []).join(',') + '|' + (lg.ln || '') + '|' + (lg.chg || []).map(c => c.t + '@' + (c.from ?? '') + '/' + (c.ln ?? '')).join(';');
     // 種別・路線ごとの最高速度（現実モード）。未設定なら種別の最高速度、それもなければ線路の制限
     // 途中で種別が変わる列車の、その駅での種別と、表示用の名前（急行→各駅停車）
@@ -2134,14 +2291,14 @@
     const tyLbl = r => r.tyAt ? [...new Set(r.tyAt.map(t => t.n))].join('→') : r.ty.n;
     const tyVmax = (t, ln) => { const v = +((t.vmaxL || {})[ln]); return v > 0 ? v : +t.vmax > 0 ? +t.vmax : 1e9 };
     // ---- 計算中の状態の退避（再計算・分析の途中で画面やシミュレーションが壊れないように）
-    function engSave() { return { RT, TR, CR, OPS, W, T0W, T1W, LIFE, acc, dec, MG, BL, MP, CAP, TL, MET, EX, EXT, PFO, TDO, PRX, EC, RUNC, CNM, WAIT, HWL, WARN } }
-    function engLoad(s) { ({ RT, TR, CR, OPS, W, T0W, T1W, LIFE, acc, dec, MG, BL, MP, CAP, TL, MET, EX, EXT, PFO, TDO, PRX, EC, RUNC, CNM, WAIT, HWL, WARN } = s) }
+    function engSave() { return { RT, TR, CR, OPS, W, T0W, T1W, LIFE, acc, dec, MG, BL, MP, CAP, TL, MET, EX, EXT, PFO, TDO, PRX, EC, RUNC, CNM, WAIT, HWL, WARN, TPO } }
+    function engLoad(s) { ({ RT, TR, CR, OPS, W, T0W, T1W, LIFE, acc, dec, MG, BL, MP, CAP, TL, MET, EX, EXT, PFO, TDO, PRX, EC, RUNC, CNM, WAIT, HWL, WARN } = s); TPO = s.TPO || new Map }
     async function yieldUI() { const w = engSave(); if (COMMIT) engLoad(COMMIT); await new Promise(r => setTimeout(r)); engLoad(w) }
 
     // 計算できない設定のエラー（どこを直せばよいかの情報つき）
     const CErr = (m, x) => Object.assign(new Error(m), x || {});
-    function engEmpty() { return { RT: [], TR: [], CR: [], OPS: [], W: 0, T0W: 0, T1W: 0, LIFE: 0, acc, dec, MG, BL, MP, CAP, TL, MET: { d: 0, bad: 0, tight: 0, miss: 0, hw: 0, blk: 0, fol: 0, irr: 0 }, EX: new Map, EXT: new Map, PFO: new Map, TDO: new Map, PRX: new Map, EC: new Map, RUNC: new Map, CNM: new Map, WAIT: new Map, HWL: [], WARN: [] } }
-    function buildLeg(lg, ri) {
+    function engEmpty() { return { RT: [], TR: [], CR: [], OPS: [], W: 0, T0W: 0, T1W: 0, LIFE: 0, acc, dec, MG, BL, MP, CAP, TL, MET: { d: 0, bad: 0, tight: 0, miss: 0, hw: 0, blk: 0, fol: 0, irr: 0 }, EX: new Map, EXT: new Map, PFO: new Map, TDO: new Map, PRX: new Map, EC: new Map, RUNC: new Map, CNM: new Map, WAIT: new Map, HWL: [], WARN: [], TPO: new Map } }
+    function buildLeg(lg, ri, sp) {
       const ty = tyOf(lg.t), path = legPath(lg), c = C(), real = REAL();
       if (!path) throw CErr(lg.from == null || lg.to == null || !GM.has(lg.from) || !GM.has(lg.to) ? `「${ty.n}」の区間の始発駅か終着駅が選ばれていません。運用の区間で駅を選んでください。` : `「${ty.n}」${stn(lg.from).n}→${stn(lg.to).n} の経路がつながっていません。経由駅を指定するか、路線を結合してください。`, { sid: GM.has(lg.from) ? lg.from : null });
       const { ids, es } = path, fw = [], dr = [], lnk = [], lk = [];
@@ -2167,7 +2324,10 @@
       });
       const sx = si.map(g => nd[g].x), stopK = new Set;
       ids.forEach((id, k) => { if (k == 0 || k == last || tySt[k].stops.has(id)) stopK.add(k) });
-      const pf = ids.map((id, k) => resolvePf(id, k < last ? dr[k] : dr[k - 1], k < last ? lnk[k] : lnk[k - 1], tySt[k]));
+      const pf = ids.map((id, k) => resolvePf(id, k < last ? dr[k] : dr[k - 1], k < last ? lnk[k] : lnk[k - 1], tySt[k], k === 0 || k === last));
+      // ホームでそのまま折り返す列車は、着いたホームから次の区間を出発する
+      // 引き上げ線を使わない折り返しでは、ホームを移ることはできないので、向きや路線が合わなくても着いたホームから発車する（合わないときは警告）
+      if (sp != null) { const p = PFM.get(sp); if (p && p.sid === ids[0]) pf[0] = p }
       const dwb = ids.map((id, k) => { const t = tySt[k]; return real ? Math.max(0, +((t.dwAt || {})[id] ?? pf[k].rdw ?? t.dw ?? c.dwr) || 0) : +pf[k].dw || 0 });
       const vb = nd.map(q => q.l); vb[nd.length - 1] = 0;
       for (let j = nd.length - 2; j >= 1; j--) vb[j] = Math.min(nd[j].l, Math.sqrt(vb[j + 1] ** 2 + 2 * rD * (nd[j + 1].x - nd[j].x)));
@@ -2210,7 +2370,7 @@
       return m;
     }
     function pfoOf(tr) {
-      if (!REAL()) return null; const m = new Map, a = PFO.get(tr.key); if (a) a.forEach((v, k) => m.set(k, v));
+      if (!REAL()) return null; const m = new Map, tp = TPO.get(tr.key), a = PFO.get(tr.key); if (tp) tp.forEach((v, k) => m.set(k, v)); if (a) a.forEach((v, k) => m.set(k, v));
       const x = excOf(tr); if (x && x.pf) Object.entries(x.pf).forEach(([kk, v]) => { const [n, k] = kk.split(':').map(Number); if (n === tr.n && PFM.has(+v)) m.set(k, +v) });
       return m;
     }
@@ -2270,9 +2430,18 @@
       if (!S.lines.length) throw 'EMPTY';
       EC = new Map; RUNC = new Map; PRX = new Map; WARN = []; VPF.clear(); PFC.clear(); TDO = new Map;
       const LEGI = new Map; RT = []; OPS = [];
+      // 終着駅ごとに、そこで折り返す種別（折り返しホームを種別で分けるため）
+      TERMTY = new Map; const tt = (sid, t) => { let l = TERMTY.get(sid); if (!l) { l = []; TERMTY.set(sid, l) } if (!l.includes(t)) l.push(t) };
+      allOps().forEach(({ op }) => (op.legs || []).forEach(lg => { const ts = [lg.t, ...(lg.chg || []).map(q => +q.t)]; tt(lg.to, ts[ts.length - 1]); tt(lg.from, lg.t) }));
       allOps().forEach(({ op, s }) => {
         if (!op.legs || !op.legs.length) return;
-        let seq; try { seq = op.legs.map(lg => { const k = legKey(lg); if (!LEGI.has(k)) { LEGI.set(k, RT.length); RT.push(buildLeg(lg, RT.length)) } return LEGI.get(k) }) } catch (e) { throw Object.assign(e instanceof Error ? e : new Error(String(e)), { op: op.id, dsid: s.id, msg0: s.dep.n + 'の運用' }) }
+        let seq; try {
+          const bl = (lg, hint) => { const k = legKey(lg) + '#' + (hint ?? ''); if (!LEGI.has(k)) { LEGI.set(k, RT.length); RT.push(buildLeg(lg, RT.length, hint)) } return LEGI.get(k) };
+          const hintOf = (ri, lg) => { if (ri == null) return null; const r = RT[ri], pp = r.pf[r.ids.length - 1]; return pp && !pp.virtual && +pp.turn !== 2 && pp.sid === lg.from ? pp.id : null };
+          let prev = null; seq = op.legs.map(lg => (prev = bl(lg, hintOf(prev, lg))));
+          // くり返す運用は、最後の区間の終着ホームから最初の区間を発車させる
+          if (Math.round(+op.rep || 0) !== 1 && seq.length) { const h = hintOf(seq[seq.length - 1], op.legs[0]); if (h != null && RT[seq[0]].pf[0].id !== h) seq[0] = bl(op.legs[0], h) }
+        } catch (e) { throw Object.assign(e instanceof Error ? e : new Error(String(e)), { op: op.id, dsid: s.id, msg0: s.dep.n + 'の運用' }) }
         for (let n = 0; n + 1 < seq.length; n++) { const a = RT[seq[n]], b = RT[seq[n + 1]]; if (a.ids[a.ids.length - 1] !== b.ids[0]) throw CErr(`${s.dep.n}の運用: 「${a.ty.n}」の終着駅（${stn(a.ids[a.ids.length - 1]).n}）と次の「${b.ty.n}」の始発駅（${stn(b.ids[0]).n}）が一致していません。区間の駅をそろえてください。`, { op: op.id, dsid: s.id }) }
         const rep = Math.max(0, Math.round(+op.rep || 0)), a = RT[seq[seq.length - 1]], b = RT[seq[0]];
         if (rep !== 1 && a.ids[a.ids.length - 1] !== b.ids[0]) throw CErr(`${s.dep.n}の運用: 繰り返すには最後の終着駅（${stn(a.ids[a.ids.length - 1]).n}）を最初の始発駅（${stn(b.ids[0]).n}）にそろえてください。`, { op: op.id, dsid: s.id });
@@ -2280,9 +2449,16 @@
       });
       OPS.forEach(o => { o.deps = opDeps(o) });
       if (!OPS.some(o => o.deps.length)) throw 'NOOPS';
+      // ホームで折り返す（引き上げ線なし）のに、ホームの向きが逆向きの発車に合っていない
+      {
+        const seen = new Set; OPS.forEach(o => {
+          const n = o.seq.length, pairs = []; for (let i = 0; i + 1 < n; i++) pairs.push([o.seq[i], o.seq[i + 1]]); if (o.rep !== 1 && n) pairs.push([o.seq[n - 1], o.seq[0]]);
+          pairs.forEach(([a, b]) => { const A = RT[a], B = RT[b], p = A.pf[A.ids.length - 1]; if (p.virtual || +p.turn === 2 || B.pf[0] !== p || seen.has(p.id)) return; if (p.dir !== 'b' && p.dir !== B.dr[0]) { seen.add(p.id); WARN.push({ k: 'turn', t: `${stn(p.sid).n}駅の「${pfLabel(p)}」は${p.dir === 'd' ? '下り' : '上り'}専用のホームですが、ここで折り返して逆向きに発車しています（ホームを移ることはできないので、着いたホームから発車させています）。ホームの向きを「両方向」にするか、引き上げ線で折り返す設定にしてください。`, s: p.sid }) } })
+        })
+      }
       if (!REAL()) {
         RT.forEach(r => r.pf.forEach((p, k) => { if (p.virtual && r.stopK.has(k)) WARN.push({ k: 'unasg', t: `${stn(r.ids[k]).n}駅で「${r.ty.n}」が停まるホームがありません（${r.dr[k === r.ids.length - 1 ? k - 1 : k] === 'd' ? '下り' : '上り'}）。駅のホーム割り当てに追加してください。`, s: r.ids[k] }) }));
-        RT.forEach(r => { const p = r.pf[r.ids.length - 1]; if (!p.turn && !p.virtual && OPS.some(o => o.seq.includes(r.ri) && (o.seq.length > 1 || o.rep !== 1))) WARN.push({ k: 'turn', t: `${stn(r.ids[r.ids.length - 1]).n}駅の「${pfLabel(p)}」で折り返していますが、折り返しが「なし」になっています。`, s: p.sid }) });
+        const seenT = new Set; RT.forEach(r => { const p = r.pf[r.ids.length - 1]; if (seenT.has(p.id)) return; if (!p.turn && !p.virtual && OPS.some(o => o.rep !== 1 ? o.seq.includes(r.ri) : o.seq.slice(0, -1).includes(r.ri))) seenT.add(p.id), WARN.push({ k: 'turn', t: `${stn(r.ids[r.ids.length - 1]).n}駅の「${pfLabel(p)}」で折り返していますが、折り返しが「なし」になっています。`, s: p.sid }) });
       }
       CNM = new Map; (S.cn || []).forEach(cn => { const k = cn.x + '_' + cn.y; if (!CNM.has(k)) CNM.set(k, []); CNM.get(k).push(cn) });
       EX = new Map; EXT = new Map; PFO = new Map;
@@ -2391,10 +2567,7 @@
           if (cl0.length) { for (const cn of cl0) { const o = cs.find(z => z.id == cn.s); if (o && xStops(o)) { cc = { o, t: cn.t }; break } } if (!cc) q.cnmiss = 1 }
           if (cc) { ch = cc.o; q.gap = gapOf(ch); if (q.gap < MP - .01) q.tight = 1 }
           else {
-            // ぎりぎり逃げ切れる駅より、余裕を持って待避できる駅を選ぶ（なければ逃げ切れる一番先の駅）
-            const OVM = MP + Math.max(0, +c.ovm || 0);
-            for (let n = cs.length - 1; n >= 0; n--) { const o = cs[n], g = gapOf(o); if (!best || g > best.g) best = { o, g }; if (g >= OVM - .01) { ch = o; q.gap = g; break } }
-            if (!ch) for (let n = cs.length - 1; n >= 0; n--) { const o = cs[n], g = gapOf(o); if (g >= MP - .01) { ch = o; q.gap = g; break } }
+            for (let n = cs.length - 1; n >= 0; n--) { const o = cs[n], g = gapOf(o); if (!best || g > best.g) best = { o, g }; if (g >= MP - .01) { ch = o; q.gap = g; break } }
             if (!ch) { ch = best.o; q.gap = best.g; q.tight = 1 }
             // 緩急接続を優先: 少し手前でも優等が停まる駅で待たせる
             if (c.xauto && !xStops(ch)) {
@@ -2413,10 +2586,14 @@
       const ea = arr(A.pts, R.oa), eb = dl + arr(B.pts, R.ob), aFirst = ea <= eb, Lr = aFirst ? A : B, Fr = aFirst ? B : A, oL = aFirst ? R.oa : R.ob, oF = aFirst ? R.ob : R.oa, sL = aFirst ? 0 : dl, sF = aFirst ? dl : 0;
       const xa = arr(Lr.pts, oL + R.len) + sL, xf = arr(Fr.pts, oF) + sF; if (xf > xa + 600) return null;
       const skip = []; for (let k = 0; k < Fr.ids.length; k++) { const u = Fr.sx[k] - oF; if (u < -1 || u > R.len + 1) continue; const pl = Lr.pfBy.get(Fr.ids[k]); if (pl && pl.id !== Fr.pf[k].id) skip.push(u) }
-      const nb = Math.max(1, Math.round(R.len / Math.max(50, BL || 100))), bd = Math.min(140, Math.max(40, BL || 100)), tl = Lr.TL;
+      // 閉塞の数と、後ろの列車がブレーキを始める位置は、閉塞シミュレーションと同じ考え方にそろえる
+      // （その場所の速度からのブレーキ距離＋40m。閉塞が短いほど細かく見る）
+      const nb = Math.max(1, Math.round(R.len / Math.max(20, BL || 100))), tl = Lr.TL, nd = Fr.nd;
+      const vAt = x => { let lo = 0, hi = nd.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; nd[m].x < x ? lo = m + 1 : hi = m } return nd[lo].l };
       let worst = 1e9, wu = 0;
       for (let j = 0; j < nb; j++) {
         const u0 = R.len * j / nb, u1 = R.len * (j + 1) / nb; if (skip.some(u => u0 < u + 20 && u1 > u - tl - 20)) continue;
+        const v = vAt(oF + u0), bd = v * v / (2 * Fr.dec) + 40;
         const tin = arr(Fr.pts, oF + Math.max(0, u0 - bd)) + sF, tout = leave(Lr.pts, oL + u1 + tl) + sL, sl = tin - tout;
         if (sl < worst) { worst = sl; wu = u0 }
       }
@@ -2443,17 +2620,16 @@
     const mapMax = (M, key, k, v) => { let m = M.get(key); if (!m) { m = new Map; M.set(key, m) } if (!(m.get(k) >= v)) m.set(k, v) };
     // 延長が落ち着くまで繰り返す
     function inner(maxIt) {
-      EX = new Map; EXT = new Map; PFO = new Map; let G; maxIt = maxIt || 14;
+      EX = new Map; EXT = new Map; PFO = new Map; TPO = new Map; let G; maxIt = maxIt || 14;
       const real = REAL();
-      // 間隔調整のための待避の延長（MTR: ホームごと。必要な延長がこれより短くても、これだけは停める）
-      const hold = new Map; if (!real && C().hadj !== false) PFM.forEach(p => { if (+p.hold > 0) hold.set(p.id, +p.hold) }); hold.forEach((v, k) => EX.set(k, v));
+      if (real) { sim(); termAssign() }
       for (let it = 0; it <= maxIt; it++) {
         sim(); G = collect(real); let pruned = false, changed = false;
         if (!real) {
           // MTR: 延長はホーム単位（同じホームの列車はすべて同じ停車時間）
           const add = new Map, ok = new Set;
           G.forEach(g => entry(g).ev.forEach(q => { if (q.pid !== undefined && !q.bad) ok.add(q.pid); if (q.cx && q.cx.t > 0 && !q.bad) ok.add(q.cx.pid) }));
-          for (const k of [...EX.keys()]) if (!ok.has(k) && !hold.has(k)) { EX.delete(k); pruned = true }
+          for (const k of [...EX.keys()]) if (!ok.has(k)) { EX.delete(k); pruned = true }
           if (!pruned) G.forEach(g => entry(g).ev.forEach(q => {
             if (q.need > .05) add.set(q.pid, Math.max(add.get(q.pid) || 0, q.need));
             if (q.cx && q.cx.t > 0) { const cur = PD(q.cx.pid); if (q.cx.t > cur + .05) add.set(q.cx.pid, Math.max(add.get(q.cx.pid) || 0, q.cx.t - cur)) }
@@ -2507,14 +2683,46 @@
       if (full) IRRL.sort((a, b) => b.v - a.v);
       return wsum ? sum / wsum : 0;
     }
+    // ---- 現実モード: 終着駅で、折り返しに指定したホームのうち空いているほうへ列車ごとに振り分ける
+    function termAssign() {
+      const G = new Map;
+      TR.forEach(tr => {
+        if (!tr.nx) return; const r = tr.P, last = r.ids.length - 1, sid = r.ids[last], p0 = r.pf[last];
+        if (p0.virtual) return; const s = stn(sid), d = r.dr[last - 1], ln = r.lnk[last - 1], nd = tr.nx.P.dr[0];
+        const c = (s.pf || []).filter(p => +p.turn > 0 && p.trk !== 'P' && (p.dir === d || p.dir === 'b') && (!p.ln || p.ln === ln) && (!p.types || p.types.includes(tyK(r, last).id)));
+        if (c.length < 2) return; let l = G.get(sid); if (!l) { l = { c, tr: [] }; G.set(sid, l) } l.tr.push(tr);
+      });
+      G.forEach(l => {
+        const free = new Map(l.c.map(p => [p.id, -1e9]));
+        l.tr.sort((u, v) => u.sh + u.P.T - (v.sh + v.P.T)).forEach(tr => {
+          const r = tr.P, last = r.ids.length - 1, a = tr.sh + r.T, cur = r.pf[last].id, nd = tr.nx.P.dr[0];
+          let best = null, bt = 1e18;
+          l.c.forEach(p => { const sep = +p.turn !== 2 && p.dir !== 'b' && p.dir !== nd; if (sep) return; const f = free.get(p.id), late = Math.max(0, f + 30 - a); const sc = late * 10 + (p.id === cur ? 0 : 1) + f * 1e-6; if (sc < bt) { bt = sc; best = p } });
+          if (!best) return;
+          const q = turnParts(best), end = q ? a + q.a + 10 : tr.nx.sh; free.set(best.id, end);
+          if (best.id !== cur) { let m = TPO.get(tr.key); if (!m) { m = new Map; TPO.set(tr.key, m) } m.set(last, best.id) }
+          if (!q && best.id !== tr.nx.P.pf[0].id) { let m = TPO.get(tr.nx.key); if (!m) { m = new Map; TPO.set(tr.nx.key, m) } m.set(0, best.id) }
+        });
+      });
+    }
     // ---- ホーム上での接近: 同じホームに、前の列車が出てから一定時間以内に次の列車が入る
     function headway() {
-      HWL = []; const P = new Map, add = (pid, a, d, t) => { let l = P.get(pid); if (!l) { l = []; P.set(pid, l) } l.push({ a, d, t }) };
+      HWL = []; const SD = new Map, P = new Map, add = (pid, a, d, t) => { let l = P.get(pid); if (!l) { l = []; P.set(pid, l) } l.push({ a, d, t }) };
       TR.forEach(tr => {
         const r = tr.P, p = r.pts, last = r.ids.length - 1;
         for (let k = 1; k < last; k++) add(r.pf[k].id, arr(p, r.sx[k]) + tr.sh, leave(p, r.sx[k]) + tr.sh, r.ty.id);
-        const a = tr.sh + r.T; add(r.pf[last].id, a, tr.nx ? tr.nx.sh : a + Math.min(30, turnDw(r)), r.ty.id);
-        if (!tr.pv || tr.pv.P.pf[tr.pv.P.ids.length - 1].id !== r.pf[0].id) add(r.pf[0].id, tr.sh - (tr.pv ? turnDw(tr.pv.P) : 20), tr.sh, r.ty.id);
+        const a = tr.sh + r.T, pl = r.pf[last], q = tr.nx ? turnParts(pl) : null;
+        if (q) { add(pl.id, a, a + q.a + 10, r.ty.id); let l = SD.get(q.sid); if (!l) { l = { n: q.n, iv: [] }; SD.set(q.sid, l) } l.iv.push({ s: a + q.a, e: a + q.a + q.tin + q.w + q.tout, t: r.ty.id }) }
+        else add(pl.id, a, tr.nx ? tr.nx.sh : a + Math.min(30, turnDw(r)), r.ty.id);
+        const pv = tr.pv, pq = pv ? turnParts(pv.P.pf[pv.P.ids.length - 1]) : null;
+        if (pq) add(r.pf[0].id, tr.sh - pq.b, tr.sh, r.ty.id);
+        else if (!pv || pv.P.pf[pv.P.ids.length - 1].id !== r.pf[0].id) add(r.pf[0].id, tr.sh - (pv ? turnDw(pv.P) : 20), tr.sh, r.ty.id);
+      });
+      // 引き上げ線: 線の本数まで同時に入れる。空いていなければ接近として数える
+      SD.forEach((l, sid) => {
+        l.iv.sort((u, v) => u.s - v.s); const ends = new Array(l.n).fill(-1e9); let n = 0, mn = 1e9; const rs = new Set;
+        l.iv.forEach(u => { let j = 0; for (let i = 1; i < ends.length; i++) if (ends[i] < ends[j]) j = i; const g = u.s - ends[j]; if (g < 5) { n++; mn = Math.min(mn, g); rs.add(u.t) } ends[j] = Math.max(ends[j], u.e) });
+        if (n) HWL.push({ pid: hkPf(sid).id, min: Math.max(0, mn), n, tys: [...rs], tc: 5 });
       });
       const tc = Math.sqrt(2 * TL / acc) + Math.sqrt(2 * TL / dec) + 8;
       P.forEach((ev, pid) => {
@@ -2558,47 +2766,74 @@
       model();
       const N = OPS.length, live = OPS.map((o, i) => i).filter(i => OPS[i].deps.length > 1 && !OPS[i].tmp), c = C();
       const tps = []; if (c.tnopt) { const seen = new Set; RT.forEach(r => { const p = r.pf[r.ids.length - 1]; if (!p.virtual && !seen.has(p.id) && OPS.some(o => o.seq.includes(r.ri))) { seen.add(p.id); tps.push(p) } }) }
-      // 間隔をそろえるための待避の延長（MTR: 待避に使っているホームごと）。今の計算で待避に使っているホームが対象
-      const regw = Math.max(0, +(c.regw ?? 1)), hps = [];
-      if (!REAL() && c.hadj !== false && regw > 0) { try { solve(false); const seen = new Set; EX.forEach((v, pid) => { const p = PFM.get(pid); if (p && !p.virtual && !seen.has(pid)) { seen.add(pid); hps.push(p) } }); PFM.forEach(p => { if (+p.hold > 0 && !p.virtual && !seen.has(p.id)) { seen.add(p.id); hps.push(p) } }) } catch (e) { } }
-      const H0 = N + tps.length, hold0 = hps.map(p => +p.hold || 0), hVals = [0, 5, 10, 15, 20, 30, 45, 60, 90];
-      const vars = [...live.slice(1).map(i => ({ j: i })), ...tps.map((p, i) => ({ j: N + i, p })), ...hps.map((p, i) => ({ j: H0 + i, h: p }))];
+      const vars = [...live.slice(1).map(i => ({ j: i })), ...tps.map((p, i) => ({ j: N + i, p }))];
       if (!vars.length) { solve(true); return { n: 0 } }
       const tmin = Math.max(0, +c.tnmin || 0), tmax = Math.max(tmin, +c.tnmax || 0), tstp = Math.max(1, +c.tnstep || 10), fleetW = Math.max(0, +c.fleetw || 0);
       const tnVals = []; for (let v = tmin; v <= tmax; v += tstp) tnVals.push(v);
       srchRun = true; srchStop = false; let n = 0;
-      const t0 = performance.now(), LIM = Math.max(5, +c.stime || 20) * 1000, stop = () => srchStop || performance.now() - t0 > LIM;
+      const t0 = performance.now(), LIM = Math.max(5, +c.stime || 20) * 1000; let LIMX = LIM; const stop = () => srchStop || performance.now() - t0 > LIMX;
       const iv = i => Math.max(60, Math.min(3600, opHeadway(OPS[i]))), cst = i => Math.max(1, Math.round(iv(i) / 60)), norm = (i, v) => ((Math.round(v) % iv(i)) + iv(i)) % iv(i);
       const off0 = OPS.map(o => o.off), dep0 = OPS.map(o => o.deps.map(d => ({ ...d })));
-      const apply = st => { OPS.forEach((o, i) => { const d = st[i] - off0[i]; o.off = st[i]; o.deps = dep0[i].map(x => ({ t: x.t + d, di: x.di })) }); tps.forEach((p, i) => TDO.set(p.id, st[N + i])); hps.forEach((p, i) => { p.hold = st[H0 + i] }) };
-      const cost = st => { apply(st); try { solve(false) } catch (e) { n++; return 1e18 } n++; return MET.d + MET.tight * 3000 + MET.bad * 1e5 + MET.miss * 3000 + MET.hw * 2500 + MET.fol * 1500 + fleetNum() * fleetW + (MET.irr || 0) * regw };
+      const apply = st => { OPS.forEach((o, i) => { const d = st[i] - off0[i]; o.off = st[i]; o.deps = dep0[i].map(x => ({ t: x.t + d, di: x.di })) }); tps.forEach((p, i) => TDO.set(p.id, st[N + i])) };
+      const cost = st => { apply(st); try { solve(false) } catch (e) { n++; return 1e18 } n++; return MET.d + MET.tight * 3000 + MET.bad * 1e5 + MET.miss * 3000 + MET.hw * 2500 + MET.fol * 1500 + fleetNum() * fleetW };
       const memo = new Map, costM = st => { const k = st.join(); let v = memo.get(k); if (v === undefined) { v = cost(st); memo.set(k, v) } return v };
       let ly = performance.now();
       const tick = async () => { if (performance.now() - ly > 40) { ly = performance.now(); onProgress && onProgress(n); await yieldUI() } };
-      async function descend(st, cv, coarse) {
+      async function descend(st, cv, coarse, fn) {
+        fn = fn || costM;
         for (let round = 0; round < 4; round++) {
           let imp = false;
           for (const x of vars) {
             let cand = [];
             if (x.j < N) { const i = x.j, s = coarse ? cst(i) : 1, b = st[i], lo = coarse ? 0 : b - cst(i), hi = coarse ? iv(i) - 1 : b + cst(i); for (let v = lo; v <= hi; v += s) cand.push(norm(i, v)) }
-            else if (x.h) cand = coarse ? hVals : [st[x.j] - 5, st[x.j] - 2, st[x.j] + 2, st[x.j] + 5].filter(v => v >= 0);
             else if (coarse) cand = tnVals; else for (let v = st[x.j] - tstp; v <= st[x.j] + tstp; v++) if (v >= 0) cand.push(v);
-            for (const v of cand) { if (v === st[x.j]) continue; const t = st.slice(); t[x.j] = v; const k = costM(t); if (k < cv - 1e-6) { cv = k; st = t; imp = true } await tick(); if (stop()) return [st, cv] }
+            for (const v of cand) { if (v === st[x.j]) continue; const t = st.slice(); t[x.j] = v; const k = fn(t); if (k < cv - 1e-6) { cv = k; st = t; imp = true } await tick(); if (stop()) return [st, cv] }
           }
           if (!imp) break;
         }
         return [st, cv];
       }
-      let st = [...OPS.map(o => o.off), ...tps.map(p => +p.tdw || 0), ...hold0], cv = costM(st);
+      let st = [...OPS.map(o => o.off), ...tps.map(p => +p.tdw || 0)], cv = costM(st);
       [st, cv] = await descend(st, cv, true);
       for (let k = 0; k < 2 && !stop() && performance.now() - t0 < LIM * .4; k++) {
-        let t = st.slice(); for (const x of vars) t[x.j] = x.h ? st[x.j] : x.j < N ? Math.floor(Math.random() * iv(x.j) / cst(x.j)) * cst(x.j) : tnVals[Math.floor(Math.random() * tnVals.length)];
+        let t = st.slice(); for (const x of vars) t[x.j] = x.j < N ? Math.floor(Math.random() * iv(x.j) / cst(x.j)) * cst(x.j) : tnVals[Math.floor(Math.random() * tnVals.length)];
         let ct = costM(t);[t, ct] = await descend(t, ct, true); if (ct < cv) { st = t; cv = ct }
       }
       if (!srchStop) [st, cv] = await descend(st, cv, false);
-      const cut = stop(); srchRun = false;
-      OPS.forEach((o, i) => { o.op.off = st[i] }); tps.forEach((p, i) => { p.tdw = st[N + i] }); hps.forEach((p, i) => { if (st[H0 + i] > 0) p.hold = st[H0 + i]; else delete p.hold });
-      return { n, cut, tps: tps.length, holds: hps.filter(p => +p.hold > 0).length };
+      // 待避できない交差・ホームの接近（折り返しの競合を含む）・閉塞の詰まりが残っているときは、時間を延ばして
+      // 1〜2個の値を大きく動かしてから下り直す探索をくり返す（問題がなくなるか、時間切れまで）
+      const probOf = s => { apply(s); try { solve(false) } catch (e) { return 1e9 } return MET.bad * 1000 + MET.tight + MET.miss + MET.fol + MET.hw };
+      let pr = probOf(st), rep = 0;
+      if (pr > 0 && !srchStop) {
+        LIMX = LIM * 2;
+        while (pr > 0 && !stop()) {
+          let t = st.slice(); const k = 1 + (Math.random() < .5 ? 1 : 0) + (rep % 5 === 4 ? 1 : 0);
+          for (let i = 0; i < k; i++) { const x = vars[Math.floor(Math.random() * vars.length)]; t[x.j] = x.j < N ? norm(x.j, Math.random() * iv(x.j)) : tnVals[Math.floor(Math.random() * tnVals.length)] }
+          let ct = costM(t);[t, ct] = await descend(t, ct, true); if (!stop()) [t, ct] = await descend(t, ct, false);
+          if (ct < cv - 1e-6) { st = t; cv = ct; pr = probOf(st) }
+          rep++; await tick();
+        }
+      }
+      // 計画では問題がなくても、閉塞シミュレーションで減速が残るときは、それも見ながら出発ずらしと折返しを動かす
+      const blkOf = s => { apply(s); try { solve(false); if (MET.bad) return 1e9; return validate().blkN } catch (e) { return 1e9 } };
+      let bk = 0;
+      if (pr === 0 && !srchStop) {
+        bk = blkOf(st);
+        if (bk > 0) {
+          LIMX = Math.max(LIMX, performance.now() - t0 + LIM * .8);
+          const memoB = new Map, costB = s => { const k = s.join(); let v = memoB.get(k); if (v === undefined) { const c0 = costM(s); v = c0 >= 1e5 ? c0 : c0 + 1500 * blkOf(s); memoB.set(k, v) } return v };
+          let cb = costB(st);[st, cb] = await descend(st, cb, false, costB);
+          while (!stop() && memoB.get(st.join()) - costM(st) > 0) {
+            let t = st.slice(); const x = vars[Math.floor(Math.random() * vars.length)]; t[x.j] = x.j < N ? norm(x.j, t[x.j] + (Math.random() - .5) * iv(x.j) * .3) : tnVals[Math.floor(Math.random() * tnVals.length)];
+            let ct = costB(t);[t, ct] = await descend(t, ct, false, costB); if (ct < cb - 1e-6) { st = t; cb = ct }
+            await tick();
+          }
+          bk = blkOf(st);
+        }
+      }
+      const cut = stop() && (pr > 0 || bk > 0); srchRun = false;
+      OPS.forEach((o, i) => { o.op.off = st[i] }); tps.forEach((p, i) => { p.tdw = st[N + i] });
+      return { n, cut, tps: tps.length, left: pr, rep, blk: bk };
     }
     // =====================================================================
     //  閉塞シミュレーション: 閉塞とホームを「1列車しか入れない資源」として、列車を実際に走らせる
@@ -2637,7 +2872,20 @@
     function placeAt(Wd, sp, T) {
       for (let n = 0; n < sp.legs.length; n++) {
         const L = sp.legs[n], r = L.P;
-        if (T < L.sh) { if (n === 0 && T < L.sh - 20) return null; return mkTrain(Wd, sp, n, 0, 0, 'dwell', L.sh, 0, T) }
+        if (T < L.sh) {
+          if (n === 0 && T < L.sh - 20) return null;
+          // 引き上げ線で折り返している途中
+          if (n > 0) {
+            const PL = sp.legs[n - 1], pr = PL.P, q = turnParts(pr.pf[pr.ids.length - 1]), a = PL.sh + pr.T;
+            if (q && T < L.sh - q.b) {
+              if (T < a + q.a) { const tr = mkTrain(Wd, sp, n - 1, pr.sx[pr.sx.length - 1], 0, 'alight', a + q.a, pr.ids.length - 1, T); tr.hq = q; return tr }
+              const tr = mkTrain(Wd, sp, n - 1, pr.sx[pr.sx.length - 1], 0, 'siding', L.sh - q.b, pr.ids.length - 1, T); relAll(Wd, tr); tr.hq = q;
+              for (let i = 0; i < q.n; i++) { const k = 'H' + q.sid + '#' + i; if (!Wd.held.has(k)) { Wd.held.set(k, tr.id); tr.hk = k; break } }
+              return tr;
+            }
+          }
+          return mkTrain(Wd, sp, n, 0, 0, 'dwell', L.sh, 0, T);
+        }
         if (T <= L.sh + r.T) { const s = legState(r, T - L.sh); return mkTrain(Wd, sp, n, s.x, s.v, s.dw ? 'dwell' : 'run', L.sh + s.until, s.k || 0, T) }
       }
       return null;
@@ -2652,6 +2900,14 @@
     function firstStopAfter(r, x) { for (let k = 0; k < r.ids.length; k++) if (r.sx[k] > x + .01 && r.stopK.has(k)) return k; return r.ids.length - 1 }
     function setNi(tr) { const nd = tr.r.nd; let j = 1; while (j < nd.length - 1 && nd[j].x <= tr.x) j++; tr.ni = j }
     function relAll(Wd, tr) { const res = tr.r.res; for (let i = tr.lo; i <= tr.hi; i++) if (Wd.held.get(res[i].key) === tr.id) Wd.held.delete(res[i].key) }
+    // 次の区間へ（折り返し後の出発ホームで、min 秒以上停まってから発車）
+    function nextLeg(Wd, tr, t, min) {
+      const NL = tr.sp.legs[tr.n + 1], nr = NL.P, held = Wd.held;
+      relAll(Wd, tr); tr.n++; tr.r = nr; tr.x = 0; tr.v = 0; tr.lo = tr.hi = 0; tr.kAt = 0; tr.ni = 1; tr.arrT = t;
+      tr.until = Wd.real ? Math.max(t + min, C().hold ? NL.sh : 0) : t + min;
+      const k0 = nr.res[0].key, h = held.get(k0);
+      if (h !== undefined && h !== tr.id) tr.mode = 'turnwait'; else { held.set(k0, tr.id); tr.mode = 'dwell' }
+    }
     function plannedDep(tr) { return tr.sp.legs[tr.n].sh + tr.r.depT[tr.kAt] }
     function curDelay(Wd, tr) {
       const L = tr.sp.legs[tr.n], t = Wd.t; let d = tr.delay;
@@ -2686,6 +2942,19 @@
           continue;
         }
         if (tr.mode === 'out') { if (t >= tr.until) { relAll(Wd, tr); tr.mode = 'done'; Wd.done++ } continue }
+        // 引き上げ線での折り返し: 降車 → 引き上げ線（空くまでホームで待つ）→ 出発ホームへ
+        if (tr.mode === 'alight') {
+          if (t < tr.until) continue; const q = tr.hq, NL = tr.sp.legs[tr.n + 1];
+          let key = null; for (let i = 0; i < q.n; i++) { const k = 'H' + q.sid + '#' + i, h = held.get(k); if (h === undefined || h === tr.id) { key = k; break } }
+          if (!key) continue;
+          relAll(Wd, tr); held.set(key, tr.id); tr.hk = key; tr.mode = 'siding';
+          tr.until = Wd.real ? Math.max(t + q.tin + q.tout, C().hold ? NL.sh - q.b : 0) : t + q.tin + q.w + q.tout;
+          continue;
+        }
+        if (tr.mode === 'siding') {
+          if (t < tr.until) continue; const q = tr.hq; if (held.get(tr.hk) === tr.id) held.delete(tr.hk); tr.hk = null;
+          nextLeg(Wd, tr, t, Wd.real ? Math.min(q.b, 20) : q.b); continue;
+        }
         if (tr.mode === 'dwell') {
           if (t < tr.until || t < tr.hold) continue;
           const pd = plannedDep(tr); tr.delay = Math.max(0, t - pd); tr.mode = 'run'; tr.sk = r.nextStop[tr.kAt];
@@ -2721,11 +2990,9 @@
             // MTR: 停車時間は固定。現実: 最低限の停車をしたら、時刻表の発車時刻まで待つ（早発しない）
             tr.until = Wd.real ? Math.max(t + (r.dwb[k] || 0), C().hold ? L.sh + r.depT[k] : 0) : t + r.dwk[k];
           } else if (tr.n + 1 < tr.sp.legs.length) {
-            const NL = tr.sp.legs[tr.n + 1], nr = NL.P, plan = NL.sh - (L.sh + r.T);
-            relAll(Wd, tr); tr.n++; tr.r = nr; tr.x = 0; tr.v = 0; tr.lo = tr.hi = 0; tr.kAt = 0; tr.ni = 1; tr.arrT = t;
-            tr.until = Wd.real ? Math.max(t + Math.max(30, plan * .5), C().hold ? NL.sh : 0) : t + plan;
-            const k0 = nr.res[0].key, h = held.get(k0);
-            if (h !== undefined && h !== tr.id) tr.mode = 'turnwait'; else { held.set(k0, tr.id); tr.mode = 'dwell' }
+            const q = turnParts(r.pf[last]);
+            if (q) { tr.mode = 'alight'; tr.kAt = k; tr.arrT = t; tr.hq = q; tr.until = t + (Wd.real ? Math.min(q.a, 15) : q.a) }
+            else { const plan = tr.sp.legs[tr.n + 1].sh - (L.sh + r.T); nextLeg(Wd, tr, t, Wd.real ? Math.max(30, plan * .5) : plan) }
           } else { tr.mode = 'out'; tr.kAt = k; tr.arrT = t; tr.until = t + Math.min(30, turnDw(r)) }
         }
       }
@@ -2753,7 +3020,7 @@
     // 現実モードの列車ごとの調整は計算した時間帯の中で決まるので、時間帯の外の列車には同じ周期の位置の調整を当てはめる
     function daySpecs() {
       const specs = [], pat = new Map, real = REAL(), phase = (o, t) => Math.round((((t - o.deps[0].t) % o.iv) + o.iv) % o.iv);
-      if (real) TR.forEach(tr => { const o = OPS[tr.o], d = o.deps.find(d => d.di === tr.di); if (opRegular(o) && d && (EXT.has(tr.key) || PFO.has(tr.key))) pat.set(tr.o + '|' + tr.n + '|' + phase(o, d.t), tr.key) });
+      if (real) TR.forEach(tr => { const o = OPS[tr.o], d = o.deps.find(d => d.di === tr.di); if (opRegular(o) && d && (EXT.has(tr.key) || PFO.has(tr.key) || TPO.has(tr.key))) pat.set(tr.o + '|' + tr.n + '|' + phase(o, d.t), tr.key) });
       OPS.forEach((o, oi) => {
         const last = (() => { const l = pt(o.op.lst); return isNaN(l) ? pt(C().lastT) : l })(), total = o.rep === 0 ? 400 : o.seq.length * Math.max(1, o.rep);
         o.deps.forEach(d => {
@@ -2761,7 +3028,7 @@
           const legs = []; let t = d.t + (x && +x.sh || 0);
           for (let n = 0; n < total; n++) {
             const li = o.seq[n % o.seq.length], key = oi + ':' + d.di + ':' + n; let tr = { r: li, o: oi, di: d.di, n, key };
-            if (real && !EXT.has(key) && !PFO.has(key) && opRegular(o)) { const k2 = pat.get(oi + '|' + n + '|' + phase(o, d.t)); if (k2) tr = { ...tr, key: k2 } }
+            if (real && !EXT.has(key) && !PFO.has(key) && !TPO.has(key) && opRegular(o)) { const k2 = pat.get(oi + '|' + n + '|' + phase(o, d.t)); if (k2) tr = { ...tr, key: k2 } }
             const P = proxyFor(li, exOf(tr), pfoOf(tr)); legs.push({ li, sh: t, P }); t += P.T;
             if (o.rep === 0 && t > last + 60 && (n + 1) % o.seq.length === 0) break;
             if (n + 1 < total) t += turnDw(P);
@@ -2775,8 +3042,21 @@
     //  画面: ヘッダー・線路図・列車・計算の流れ
     // =====================================================================
     const ROW = 101, TOP = 46, LX = { uo: 55, ui: 160, di: 252, do: 355 };
-    let ERRX = null, VIEW = 'home', SEL = null, OPENPF = null, LTAB = 'line', ERR = '', SIMW = null, PLAY = false, DIRTY = false, IX = new Map, YS = [];
+    let MVTO = null, ERRX = null, VIEW = 'home', SEL = null, OPENPF = null, LTAB = 'line', ERR = '', SIMW = null, PLAY = false, DIRTY = false, IX = new Map, YS = [];
     const SPEEDS = [1, 2, 5, 10, 30, 60, 120];
+    // 速さのスライダー（0.25倍〜300倍。目盛りは対数）
+    const SPMIN = .25, SPMAX = 300;
+    const spdToV = s => Math.round(1000 * Math.log(Math.max(SPMIN, Math.min(SPMAX, s)) / SPMIN) / Math.log(SPMAX / SPMIN));
+    const vToSpd = v => { const s = SPMIN * Math.pow(SPMAX / SPMIN, v / 1000); return s < 2 ? Math.round(s * 20) / 20 : s < 10 ? Math.round(s * 10) / 10 : Math.round(s) };
+    const fmtSpd = s => (s < 10 ? String(+(+s).toFixed(2)) : String(Math.round(s))) + 'x';
+    // スライダーの目盛り（対数の位置に合わせる。つまみの幅の分だけ両端を内側へ）
+    function spdTicks() { const TH = 16; return `<div class="spdt">${[.25, 1, 2, 5, 10, 30, 100, 300].map(v => { const f = spdToV(v) / 1000; return `<span style="left:calc(${(f * 100).toFixed(2)}% + ${((.5 - f) * TH).toFixed(1)}px)">${fmtSpd(v)}</span>` }).join('')}</div>` }
+    function setSpeed(s, persist) { C().speed = Math.max(SPMIN, Math.min(SPMAX, +s || 1)); renderPlay(); const v = $('spdv'); if (v) v.textContent = fmtSpd(C().speed); const r = $('spdr'); if (r && document.activeElement !== r) r.value = spdToV(C().speed); document.querySelectorAll('[data-in=spdr2]').forEach(el => { if (document.activeElement !== el) el.value = spdToV(C().speed) }); document.querySelectorAll('.spdv2').forEach(el => el.textContent = fmtSpd(C().speed)); if (persist) save() }
+    function toggleSpdPop(force) {
+      const p = $('spdpop'), open = force ?? p.classList.contains('hide'); p.classList.toggle('hide', !open); if (!open) return;
+      const b = $('bplay').getBoundingClientRect(); p.style.left = Math.max(8, Math.min(innerWidth - 300, b.left - 60)) + 'px'; p.style.top = (b.bottom + 6) + 'px';
+      $('spdq').innerHTML = spdTicks() + [.5, 1, 2, 5, 10, 30, 60, 120, 300].map(v => `<button class="pill ghost" data-spq="${v}">${fmtSpd(v)}</button>`).join(''); setSpeed(C().speed || 1);
+    }
     let toastT = null;
     function toast(m, ms) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 2600) }
     const ico = {
@@ -2796,6 +3076,7 @@
 
     // ---- ヘッダー
     function renderHeader() {
+      try { applyNFont() } catch (e) { }
       const L = curLine();
       $('badges').innerHTML = S.lines.map((M, i) => i === S.cur ? '' : mark(M, null, 28, { btn: true })).join('');
       $('hname').innerHTML = L ? mark(L, null, 58) + `<div class="t"><b>${esc(L.n)}</b><small>${esc(L.en || '')}</small></div>` : `<span class="lmk" style="width:58px;height:58px;border-radius:50%;border:4px dashed #c8c8c8;color:#aaa;font-size:30px">+</span><div class="t"><b style="color:#9a9a9a">路線がありません</b><small style="color:#9a9a9a">ここを押して路線を追加</small></div>`;
@@ -2813,7 +3094,7 @@
       $('playic').innerHTML = PLAY ? ico.pause : ico.play;
       $('playic').style.background = PLAY ? 'var(--green)' : 'var(--red)';
       $('playlb').style.color = PLAY ? '#4fb82a' : 'var(--red)';
-      $('playlb').textContent = (PLAY ? '運行中' : '停止中') + '(' + (C().speed || 1) + 'x)';
+      $('playlb').textContent = (PLAY ? '運行中' : '停止中') + '(' + fmtSpd(C().speed || 1) + ')';
     }
     function renderStatus() {
       const row = (ok, t) => `<div class="${ok ? 'ok' : 'ng'}"><i></i>${t}</div>`, d = LASTCALC, p = n => String(n).padStart(2, '0');
@@ -2860,8 +3141,9 @@
     const TEL = new Map;
     const ease = f => f < 0 ? 0 : f > 1 ? 1 : f * f * (3 - 2 * f);
     function trainGeo(tr) {
-      if (tr.mode === 'done' || tr.mode === 'pend' && !SIMW) return null;
-      const r = tr.r, x = tr.x, n = r.ids.length;
+      if (tr.mode === 'done' || tr.mode === 'siding' || tr.mode === 'pend' && !SIMW) return null;
+      // 描画は直前の刻みと今の位置の間をなめらかにつなぐ（シミュレーションの速さによらず毎フレーム動く）
+      const r = tr.r, x = tr.px != null && tr.pr === r && !tr.pv0 ? tr.px + (tr.x - tr.px) * ALPHA : tr.x, n = r.ids.length;
       let k = 0; while (k < n - 2 && r.sx[k + 1] <= x + .01) k++;
       const a = r.ids[k], b = r.ids[k + 1], ia = IX.get(a), ib = IX.get(b);
       const atSt = Math.abs(x - r.sx[k]) < 1 ? k : Math.abs(x - r.sx[k + 1]) < 1 ? k + 1 : -1;
@@ -2884,7 +3166,7 @@
       return { x: lx, y, down, atSt };
     }
     function trainHTML(tr, g) {
-      const t = SIMW.t, dw = tr.mode === 'dwell' || tr.mode === 'turnwait' || tr.mode === 'out' || tr.mode === 'pend';
+      const t = SIMW.t, dw = tr.mode === 'dwell' || tr.mode === 'turnwait' || tr.mode === 'out' || tr.mode === 'pend' || tr.mode === 'alight';
       const rem = dw ? Math.max(0, Math.ceil(tr.until - t)) : 0;
       const ic = dw ? ico.clock : g.down ? ico.down : ico.up, num = dw && rem > 0 ? `<span class="n">${rem > 999 ? '…' : rem}</span>` : '';
       return g.down ? `<div class="ti">${num}${ic}</div>` : `<div class="ti">${ic}${num}</div>`;
@@ -2907,7 +3189,7 @@
         let el = TEL.get(tr.id);
         if (!el) { el = document.createElement('div'); el.className = 'tr'; el.dataset.tr = tr.id; box.appendChild(el); TEL.set(tr.id, el); el._h = '' }
         const c = tyK(tr.r, tr.kAt).c; if (el._c !== c) { el.style.background = c; el._c = c }
-        el.style.transform = `translate(${g.x.toFixed(1)}px,${g.y.toFixed(1)}px)`;
+        el.style.transform = `translate(${g.x.toFixed(2)}px,${g.y.toFixed(2)}px)`;
         const h = trainHTML(tr, g); if (h !== el._h) { el.innerHTML = h; el._h = h }
         const late = curDelay(SIMW, tr) >= 30; el.classList.toggle('late', late); el.classList.toggle('sel', tr.id === selId); el.classList.toggle('blk', !!tr.blocked && tr.v < 1);
         el.title = `${tyLbl(tr.r)} ${stn(tr.r.ids[0]).n}→${stn(tr.r.ids[tr.r.ids.length - 1]).n}`;
@@ -2915,7 +3197,7 @@
       TEL.forEach((el, id) => { if (!seen.has(id)) { el.remove(); TEL.delete(id) } });
     }
     // ---- 運行ループ
-    let lastF = 0, accT = 0, lastTV = 0, lastClk = '';
+    let lastF = 0, accT = 0, lastTV = 0, lastClk = '', ALPHA = 1;
     function frame(ts) {
       try { frame1(ts) } catch (e) { console.error(e); PLAY = false; renderPlay(); toast('シミュレーションでエラーが出たため停止しました: ' + (e.message || e)) }
       requestAnimationFrame(frame);
@@ -2924,11 +3206,13 @@
       const dt = Math.min(.25, Math.max(0, (ts - lastF) / 1000)); lastF = ts;
       if (PLAY && SIMW) {
         accT += dt * (C().speed || 1); let n = 0;
-        while (accT >= .5 && n < 600) { stepWorld(SIMW, .5); accT -= .5; n++ }
+        while (accT >= .5 && n < 600) { for (const tr of SIMW.trains) { tr.px = tr.x; tr.pr = tr.r } stepWorld(SIMW, .5); accT -= .5; n++ }
         if (n >= 600) accT = 0;
+        ALPHA = Math.min(1, accT / .5);
         const end = pt(C().lastT) + 3 * 3600; if (SIMW.t > end) { PLAY = false; renderPlay(); toast('運行が終わりました') }
       }
-      if (SIMW) { drawTrains(); const c = hm(SIMW.t); if (c !== lastClk) { $('clk').textContent = c; lastClk = c } }
+      else ALPHA = 1;
+      if (SIMW) { drawTrains(); const c = hm(SIMW.t - (PLAY ? (1 - ALPHA) * .5 : 0)); if (c !== lastClk) { $('clk').textContent = c; lastClk = c } }
       if (VIEW === 'tr' && ts - lastTV > 300) { lastTV = ts; refreshTrainView() }
     }
     function rebuildWorld(T) {
@@ -2962,11 +3246,11 @@
       const b = $('brecalc'), lb = $('recalclb');
       if (srchRun) { srchStop = true; return }
       b.querySelector('.c').classList.add('spin'); lb.textContent = '探索中…';
-      let res = null; const IRR0 = MET.irr || 0;
+      let res = null; const B0 = { bad: MET.badN || 0, hw: MET.hwN || 0 };
       try { res = await search(n => { lb.textContent = n + '通り…' }) } catch (e) { ERR = String(e); srchRun = false }
       b.querySelector('.c').classList.remove('spin'); lb.textContent = '再計算する';
       calcNow();
-      if (res && !ERR) { LASTSRCH = { ...res, d: MET.d, irr: MET.irr || 0, irr0: IRR0, fleet: fleetNum(), at: new Date() }; toast(`再計算しました（${res.n}通りを比較${res.cut ? '・途中で打ち切り' : ''}）`); if (VIEW === 'home') renderView() }
+      if (res && !ERR) { LASTSRCH = { ...res, d: MET.d, fleet: fleetNum(), bad0: B0.bad, hw0: B0.hw, bad: MET.badN || 0, hw: MET.hwN || 0, at: new Date() }; toast(res.left > 0 ? `再計算しました（${res.n}通りを比較）。待避できない交差や折り返しの競合が残っています。探索する時間を延ばすか、分析の「減便の目安」を試してください` : `再計算しました（${res.n}通りを比較${res.rep ? '・問題をなくすまで追加で探索' : ''}）`, res.left > 0 ? 6000 : 2500); if (VIEW === 'home') renderView() }
     }
     let LASTSRCH = null;
 
@@ -2987,10 +3271,13 @@
       $('hname').onclick = () => { LTAB = 'line'; openView('line') }; $('blset').onclick = () => { LTAB = 'line'; openView('line') };
       $('legend').onclick = e => { const b = e.target.closest('[data-ty]'); if (b) { LTAB = 'ty'; OPENTY = +b.dataset.ty; select({ k: 'v', v: 'line' }) } };
       $('bplay').onclick = e => {
-        if (e.target.closest('#playlb')) { const i = SPEEDS.indexOf(C().speed || 1); C().speed = SPEEDS[(i + 1) % SPEEDS.length]; save(); renderPlay(); return }
+        if (e.target.closest('#playlb')) { toggleSpdPop(); return }
         if (!SIMW) { toast(ERR === 'EMPTY' ? '先に路線を追加してください' : ERR === 'NOOPS' ? '先に駅に車庫を併設して運用を作ってください' : ERR || '先に計算を通してください'); return } PLAY = !PLAY; renderPlay();
       };
-      $('bplay').oncontextmenu = e => { e.preventDefault(); const i = SPEEDS.indexOf(C().speed || 1); C().speed = SPEEDS[(i + 1) % SPEEDS.length]; save(); renderPlay() };
+      $('bplay').oncontextmenu = e => { e.preventDefault(); toggleSpdPop() };
+      $('spdr').oninput = e => setSpeed(vToSpd(+e.target.value)); $('spdr').onchange = () => save();
+      $('spdq').onclick = e => { const b = e.target.closest('[data-spq]'); if (b) setSpeed(+b.dataset.spq, true) };
+      document.addEventListener('pointerdown', e => { const p = $('spdpop'); if (!p.classList.contains('hide') && !p.contains(e.target) && !e.target.closest('#playlb')) toggleSpdPop(false) });
       $('brecalc').onclick = recalc;
       $('bana').onclick = () => { if (VIEW === 'ana') { select(null); return } select({ k: 'v', v: 'ana' }); runAnalysis() };
       $('bops').onclick = () => openView('ops'); $('bmenu').onclick = () => openView('menu');
@@ -3064,13 +3351,38 @@
       let h = `<div class="view"><div class="vh"><div class="t"><b>運行の指示</b><small>${esc(S.name || (curLine() ? curLine().n : ''))} ${modeTag()}</small></div></div>`;
       if (ERR === 'NOOPS') h += `<div class="card hl"><b>運用がまだありません</b><p class="note">車庫を置く駅を押して「車庫を併設する」から運用を作ると、ダイヤが計算されます。${S.ty.length ? '' : '先に路線設定の「種別」で種別を作っておくと選びやすくなります。'}</p></div>`;
       else h += `<p class="note">駅を押すとホーム割り当て、列車を押すとその列車の詳細とスジの編集を表示します。計算した時間帯: ${hm(T0W)}〜${hm(T1W)}・列車 ${TR.length}本。所要時間: ${RT.filter((r, i, a) => a.findIndex(q => q.ty === r.ty) === i).slice(0, 8).map(r => `<span class="dot" style="background:${r.ty.c}"></span>${esc(r.ty.n)} ${fmtMS(baseT(r.ri))}`).join('　')}</p>`;
-      if (LASTSRCH && !ERR) h += `<div class="card hl"><b>再計算の結果</b><p class="note" style="margin:2px 0 0">${LASTSRCH.n}通りを比較${LASTSRCH.cut ? '（時間切れのため途中まで）' : ''}。1時間あたりの遅れ ${Math.round(LASTSRCH.d)}秒・列車間隔のばらつき ${Math.round(LASTSRCH.irr0)}→${Math.round(LASTSRCH.irr)}秒・編成 ${LASTSRCH.fleet}本${LASTSRCH.holds ? `・間隔調整のために待避を延ばしたホーム ${LASTSRCH.holds}か所` : ''}。出発ずらし: ${OPS.filter(o => o.deps.length > 1).slice(0, 12).map(o => esc(opName(o.op)) + ' ' + o.op.off + '秒').join(' / ')}</p></div>`;
-      if (!ERR) { h += `<h2>待避の指示</h2>${instructions()}`; h += `<h2>${REAL() ? '停車時間の調整' : 'ホームの停車時間'}</h2>${dwellList()}` }
+      if (LASTSRCH && !ERR) h += `<div class="card hl"><b>再計算の結果</b><p class="note" style="margin:2px 0 0">${LASTSRCH.n}通りを比較${LASTSRCH.cut ? '（時間切れのため途中まで）' : ''}。1時間あたりの遅れ ${Math.round(LASTSRCH.d)}秒・編成 ${LASTSRCH.fleet}本${LASTSRCH.bad0 != null ? `・待避できない交差 ${LASTSRCH.bad0}→${LASTSRCH.bad}・ホームの接近 ${LASTSRCH.hw0}→${LASTSRCH.hw}` : ''}。出発ずらし: ${OPS.filter(o => o.deps.length > 1).slice(0, 12).map(o => esc(opName(o.op)) + ' ' + o.op.off + '秒').join(' / ')}</p></div>`;
+      if (!ERR) { h += `<h2>待避の指示</h2>${instructions()}`; h += termList(); h += `<h2>${REAL() ? '停車時間の調整' : 'ホームの停車時間'}</h2>${dwellList()}` }
       h += `<h2>車庫の一覧</h2>${depotList(true)}`;
       h += `<h2>車庫への適用設定</h2>${(S.days || []).length > 1 ? `<p class="note">${esc((dayOf(S.day) || {}).n || '')}ダイヤの運用です。</p>` : ''}${depotApply()}`;
       if (!ERR) h += `<h2>レポート</h2><div class="card hl"><p class="note" style="margin-top:0">ダイヤの概要・運用・待避・列車ごとの時刻表・駅ごとの時刻表を、Excelやスプレッドシートで開けるファイル（.xlsx）に書き出します。</p><div class="row" style="gap:8px;flex-wrap:wrap"><button class="pill k" data-act="report">詳細レポートを書き出す</button>${(S.days || []).length > 1 ? '<button class="pill ghost" data-act="reportall">すべての曜日をまとめて書き出す</button>' : ''}</div></div>`;
       h += `</div>`;
       return h;
+    }
+    // 終着駅・始発駅で使うホーム（自動で振り分けたものを含む）
+    const pfNo = p => { const s = stn(p.sid); if (p.virtual || !s.pf) return ''; const i = s.pf.filter(q => q.trk !== 'P').indexOf(p); return i >= 0 ? (i + 1) + '番線' : '' };
+    function termList() {
+      const M = new Map, real = REAL(), so = stOrder();
+      const put = (sid, ty, kind, p, auto) => { let st = M.get(sid); if (!st) { st = new Map; M.set(sid, st) } const k = ty.id + '|' + kind; let e = st.get(k); if (!e) { e = { ty, kind, ps: new Map, auto: false }; st.set(k, e) } e.ps.set(p.id, (e.ps.get(p.id) || 0) + 1); if (auto) e.auto = true };
+      TR.forEach(tr => {
+        const r = tr.P, last = r.ids.length - 1;
+        if (tr.nx) { const p = r.pf[last]; if (!p.virtual) put(r.ids[last], tyK(r, last), +p.turn === 2 ? 'hk' : 'arr', p, !p.types || (TPO.get(tr.key) || new Map).has(last)) }
+        const q = r.pf[0]; if (!q.virtual && (tr.pv || r.ids[0])) put(r.ids[0], tyK(r, 0), 'dep', q, !q.types || (TPO.get(tr.key) || new Map).has(0));
+      });
+      if (!M.size) return '';
+      const rows = [...M.entries()].filter(([sid, st]) => [...st.values()].some(e => e.kind !== 'dep') || [...st.values()].some(e => e.ps.size > 1 || e.auto)).sort((a, b) => so(a[0]) - so(b[0]));
+      if (!rows.length) return '';
+      const kn = { arr: '着いて折り返す', hk: '降車して引き上げ線へ', dep: '発車' };
+      let h = `<h2>終着駅・始発駅のホーム</h2><p class="note">${real ? '現実モードでは、折り返しに指定したホームのうち空いているほうへ列車ごとに振り分けています（本数は計算した時間帯の中の本数）。' : 'MTRモードでは、折り返しに指定したホームを種別ごとに振り分けて固定しています。MTRの路線（またはホーム）の設定をこのとおりにしてください。'}</p><div class="card">`;
+      rows.forEach(([sid, st], i) => {
+        h += `<div class="ins" data-act="gost" data-id="${sid}" style="cursor:pointer${i ? ';border-top:1px solid #eee' : ''}">${stMark(sid, 34)}<div class="bd"><b>${esc(stn(sid).n)}</b>`;
+        [...st.values()].sort((a, b) => (a.kind === 'dep') - (b.kind === 'dep') || tyIdx(a.ty) - tyIdx(b.ty)).forEach(e => {
+          const ps = [...e.ps.entries()].sort((a, b) => b[1] - a[1]).map(([pid, n]) => { const p = PFM.get(pid); return `<b>${esc(pfNo(p) || pfName(p))}</b><small class="note" style="display:inline;margin:0">（${esc(pfName(p))}${real && e.ps.size > 1 ? '・' + n + '本' : ''}）</small>` }).join('・');
+          h += `<div style="font:600 13px/1.8 var(--jp)"><span class="dot" style="background:${e.ty.c}"></span>${esc(e.ty.n)}　${kn[e.kind]}: ${ps}${e.auto ? ' <span class="tg2">自動</span>' : ''}</div>`;
+        });
+        h += `</div></div>`;
+      });
+      return h + '</div>';
     }
     function instructions() {
       const out = [], so = stOrder(), real = REAL(), row = (sid, body, cls) => out.push({ o: sid ? so(sid) : 1e7, h: `<div class="ins${cls ? ' ' + cls : ''}"${sid ? ` data-act="gost" data-id="${sid}" style="cursor:pointer"` : ''}>${sid ? stMark(sid, 34) : '<span class="num" style="background:#bbb;width:34px;height:34px">!</span>'}<div class="bd">${body}</div></div>` });
@@ -3171,7 +3483,12 @@
       h += `<div class="g3" style="margin-top:8px">` + linesOf(id).map(M => fld(esc(M.code) + ' の番号', `<input class="in en" data-in="stnum" data-ln="${M.id}" value="${esc(numOf(s, M) ?? '')}">`)).join('') + `</div>`;
       const nb = []; linesOf(id).forEach(M => { const i = M.ids.indexOf(id); if (i > 0) nb.push([M, M.ids[i - 1], lineEdge(M, i - 1)]); if (i < M.ids.length - 1) nb.push([M, M.ids[i + 1], lineEdge(M, i)]) });
       h += nb.filter(([, , e]) => e).map(([M, o, e]) => `<div class="row" style="margin-top:8px;gap:8px;font:700 13px var(--jp)"><span style="flex:1">${esc(stn(o).n)}まで <small class="note">${esc(M.code)}</small></span>${numIn('edd', e.d, `data-e="${e.id}" style="width:120px"`)}<span>m</span>${numIn('edv', e.v, `data-e="${e.id}" style="width:100px"`)}<span>km/h</span></div>`).join('');
-      h += `</div><p class="note">番号は路線設定でまとめて振り直せます。区間の複々線・低速区間も路線設定で変更します。</p></div>`;
+      h += `</div><p class="note">番号は路線設定でまとめて振り直せます。区間の複々線・低速区間も路線設定で変更します。</p>`;
+      if (S.lines.length > 1) {
+        const mine = linesOf(id), others = S.lines.filter(M => !mine.includes(M)), to = others.find(M => M.id === MVTO) || others[0];
+        h += `<details class="dt"${MVTO ? ' open' : ''}><summary>この駅を別の路線へ移す</summary><div class="card" style="margin-top:6px">${others.length ? `<div class="g2">${fld('移す元', `<select class="in" id="mvfrom">${mine.map(M => `<option value="${M.id}">${esc(M.n)}</option>`).join('')}</select>`)}${fld('移す先', `<select class="in" data-in="mvto">${others.map(M => `<option value="${M.id}"${M === to ? ' selected' : ''}>${esc(M.n)}</option>`).join('')}</select>`)}</div><div class="g2" style="margin-top:8px">${fld('入れる場所', `<select class="in" id="mvafter"><option value="">先頭（${esc(to.ids.length ? stn(to.ids[0]).n : '')}の前）</option>${to.ids.map(x => `<option value="${x}"${x === to.ids[to.ids.length - 1] ? ' selected' : ''}>${esc(stn(x).n)}の次</option>`).join('')}</select>`)}<label class="row" style="gap:8px;align-self:end;font:700 13px var(--jp);color:var(--sub)"><input type="checkbox" id="mvkeep">元の路線にも残す（乗換駅にする）</label></div><div class="row" style="margin-top:10px;gap:8px"><button class="pill b" data-act="mvgo">移す</button><small class="note">ホーム・停車駅・車庫はそのまま引き継ぎます。新しくできる区間の距離は、間にあった区間の半分（なければ1000m）なので、あとで直してください。Ctrl+Zで戻せます。</small></div>` : '<p class="note" style="margin:0">この駅はすべての路線に入っています。</p>'}</div></details>`;
+      }
+      h += `</div>`;
       return h;
     }
     function pfCard(s, p, i, L) {
@@ -3189,14 +3506,14 @@
       return `<div class="pf open"><div class="pfg">${head}
     <div class="pfr1"><label class="dw" title="${real ? 'このホームの停車時間（空欄は種別の設定）。駅ごとに種別で決めた停車時間があればそちらが優先です' : 'このホームの基本の停車時間（秒・0.5秒単位）'}">${ico.clockB}${i < 0 && !real ? '<b>-</b>' : real ? `<input type="number" min="0" step="1" data-in="pfrdw" value="${p.rdw ?? ''}" placeholder="${dwTxt}">` : `<input type="number" min="0" step="0.5" data-in="pfdw" value="${p.dw}">`}${ex && !real ? `<span class="ex" title="待避のための延長">+${ex}</span>` : ''}</label><div class="wt">待避種別<br>${w ? [...w.y].map(tyName).join('・') : '(なし)'}</div></div>
     <div class="pfl">${chips}<div class="dd"><button class="add" data-act="pftyadd"><i>+</i>新規追加する</button>${dd}</div>${p.types ? '' : '<small class="note" style="margin:0">自動割り当て（種別の線路から決定）</small>'}</div>
-    <div class="pfr2">${i < 0 ? '' : `<button class="tb${p.turn ? '' : ' off'}" data-act="pfturn" title="押すと折り返しの有無を切り替え"><span class="c">${p.turn ? ico.uturn : arw}</span><span>折り返し<br>${p.turn ? p.tdw + '秒' : 'なし'}</span></button>`}</div>
+    <div class="pfr2">${i < 0 ? '' : `<button class="tb${p.turn ? '' : ' off'}${+p.turn === 2 ? ' hk' : ''}" data-act="pfturn" title="押すと「ホームで折り返し → 引き上げ線で折り返し → 折り返しなし」の順に切り替わります"><span class="c">${p.turn ? ico.uturn : arw}</span><span>${+p.turn === 2 ? '引き上げ線<br>' + (turnParts(p) ? fmtMS(turnParts(p).a + turnParts(p).tin + turnParts(p).w + turnParts(p).tout + turnParts(p).b) : '') : '折り返し<br>' + (p.turn ? p.tdw + '秒' : 'なし')}</span></button>`}</div>
     <div class="pfx">
       <label>線路 <select data-in="pftrk">${Object.entries(TRK).map(([k, v]) => `<option value="${k}"${p.trk === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
       <label>向き <select data-in="pfdir"><option value="d"${p.dir === 'd' ? ' selected' : ''}>下り ↓</option><option value="u"${p.dir === 'u' ? ' selected' : ''}>上り ↑</option><option value="b"${p.dir === 'b' ? ' selected' : ''}>両方向</option></select></label>
       <label>方面 <input class="in" data-in="pfname" value="${esc(p.n || '')}" placeholder="${esc(autoName(p) || '自動')}" title="空欄なら向きから自動で付きます"></label>
       ${multi ? `<label>路線 <select data-in="pfln"><option value="">すべて</option>${linesOf(s.id).map(M => `<option value="${M.id}"${p.ln === M.id ? ' selected' : ''}>${esc(M.n)}</option>`).join('')}</select></label>` : ''}
-      ${p.turn ? `<label>折返し停車 <input type="number" data-in="pftdw" value="${p.tdw}" min="0" step="5">秒</label>` : ''}
-      ${!real && i >= 0 ? `<label title="列車間隔をそろえるため、待避に必要な時間より長く停める秒数（再計算で自動で決まります）">間隔調整の延長 <input type="number" data-in="pfhold" value="${+p.hold || ''}" placeholder="0" min="0" step="5">秒</label>` : ''}
+      ${+p.turn === 1 ? `<label>折返し停車 <input type="number" data-in="pftdw" value="${p.tdw}" min="0" step="5">秒</label>` : ''}
+      ${+p.turn === 2 ? (() => { const h = hkOf(s.id); return `<div class="hkbox"><b>引き上げ線で折り返す</b><small class="note" style="display:block;margin:0 0 6px">降車したあと奥の引き上げ線に入り、折り返して出発ホームへ戻ります。出発ホームは次の区間の種別で決まります（同じホームとは限りません）。</small><div class="hkg"><label>降車 <input type="number" data-in="pfadw" value="${p.adw ?? 20}" min="0" step="5">秒</label><label>引き上げ線まで <input type="number" data-in="hktin" value="${h.tin}" min="0" step="5">秒</label><label>引き上げ線で停車 <input type="number" data-in="pftdw" value="${p.tdw}" min="0" step="5">秒</label><label>出発ホームまで <input type="number" data-in="hktout" value="${h.tout}" min="0" step="5">秒</label><label>乗車 <input type="number" data-in="pfbdw" value="${p.bdw ?? 30}" min="0" step="5">秒</label><label>引き上げ線の本数 <input type="number" data-in="hkn" value="${h.n || 1}" min="1" step="1">本</label></div><small class="note" style="display:block;margin-top:4px">引き上げ線までの時間・出発ホームまでの時間・本数は、この駅の引き上げ線すべてに共通です。</small></div>` })() : ''}
       ${p.types ? '<button data-act="pfauto">自動割り当てに戻す</button>' : ''}
       <button data-act="pfdel" style="color:var(--red)">このホームを削除</button>
     </div></div></div>`;
@@ -3261,7 +3578,7 @@
     function trainArrowFor(tr) { const g = trainGeo(tr); return g && !g.down ? ico.up : ico.down }
     function trainKpi(tr) {
       const r = tr.r, d = curDelay(SIMW, tr), k = tr.mode === 'run' ? tr.sk : tr.kAt;
-      const pos = tr.mode === 'run' ? (() => { let e = 0; while (e < r.ids.length - 2 && r.sx[e + 1] <= tr.x) e++; return esc(stn(r.ids[e]).n) + '→' + esc(stn(r.ids[e + 1]).n) })() : esc(stn(r.ids[tr.kAt]).n) + (tr.mode === 'turnwait' ? '（ホーム待ち）' : '（停車中）');
+      const pos = tr.mode === 'run' ? (() => { let e = 0; while (e < r.ids.length - 2 && r.sx[e + 1] <= tr.x) e++; return esc(stn(r.ids[e]).n) + '→' + esc(stn(r.ids[e + 1]).n) })() : esc(stn(r.ids[tr.kAt]).n) + (tr.mode === 'turnwait' ? '（ホーム待ち）' : tr.mode === 'siding' ? '（引き上げ線で折り返し中）' : tr.mode === 'alight' ? '（降車中・このあと引き上げ線へ）' : '（停車中）');
       const rem = tr.mode === 'run' ? '走行中' : Math.max(0, Math.ceil(tr.until - SIMW.t)) + '秒';
       const ov = tr.mode === 'dwell' && tr.kAt > 0 && tr.kAt < r.ids.length - 1 ? overtaker(tr) : null;
       return `<div><small>現在</small><b style="font:700 18px/1.3 var(--jp)">${pos}</b></div><div><small>${tr.mode === 'run' ? '次の停車駅' : '発車まで'}</small><b style="font:700 ${tr.mode === 'run' ? '18px/1.3 var(--jp)' : '28px/1.2 var(--en)'}">${tr.mode === 'run' ? esc(stn(r.ids[k]).n) : rem}</b></div><div><small>速度</small><b>${Math.round(tr.v * 3.6)}<small style="display:inline;font-size:14px"> km/h</small></b></div><div><small>遅れ</small><b style="color:${d >= 30 ? 'var(--red)' : d >= 5 ? '#e0a033' : '#4fb82a'}">${d < 1 ? '定時' : '+' + fmtMS(d)}</b></div>` + (tr.blocked && tr.v < 1 ? `<div style="grid-column:1/3;background:#fff1f1"><small class="warn">前の閉塞に列車がいるため停止しています</small></div>` : '') + (ov ? `<div style="grid-column:1/3;background:#eef8ff"><small style="color:var(--blue2)">待避中: ${esc(ov.r.ty.n)}の通過を待っています（${esc(pfLabel(r.pf[tr.kAt]))}）${ov.r.stopK.has(ov.r.ids.indexOf(r.ids[tr.kAt])) ? '・緩急接続' : ''}</small></div>` : '');
@@ -3295,14 +3612,14 @@
       const c = C(), real = REAL();
       let h = `<div class="view"><div class="vh"><div class="t"><b>運行設定</b><small>シミュレーション・時刻・待避と接続 ${modeTag()}</small></div>${xbtn}</div>`;
       h += `<h2 style="margin-top:20px">車庫の一覧</h2>${depotList(false)}`;
-      h += `<h2>シミュレーション</h2><div class="card"><span class="fld"><span>速さ（再生ボタンの下の表示を押しても切り替わります）</span></span><div class="seg" style="margin-top:6px">${SPEEDS.map(v => `<button class="${(c.speed || 1) == v ? 'on' : ''}" data-act="spd" data-v="${v}">${v}x</button>`).join('')}</div>`;
+      h += `<h2>シミュレーション</h2><div class="card"><div class="row sp"><span class="fld"><span>速さ（再生ボタンの下の表示を押しても変えられます）</span></span><b class="en spdv2" style="font-size:20px">${fmtSpd(c.speed || 1)}</b></div><input type="range" class="rng" data-in="spdr2" min="0" max="1000" step="1" value="${spdToV(c.speed || 1)}">${spdTicks()}`;
       h += `<div class="g2" style="margin-top:12px;align-items:end">${fld('運行時刻へ移動', `<input class="in en" data-in="simt" value="${esc(SIMW ? hms(SIMW.t) : c.simT)}">`)}<button class="pill g" data-act="simgo" style="justify-self:start">この時刻から運行</button></div><p class="note">移動すると、その時刻の計画どおりの位置に列車を並べ直します（入れた遅延は消えます）。</p></div>`;
       h += `<h2>ダイヤの種類</h2><div class="card"><p class="note" style="margin-top:0">平日・土曜・日祝などのダイヤを分けて作れます。運用ごとに運転する日を選びます（何も選ばない運用は毎日）。表示中のダイヤは「運行時刻」の横のボタンでも切り替えられます。</p>${(S.days || []).map(d => `<div class="row" style="gap:8px;margin-top:6px" data-day="${d.id}"><button class="pill ${d.id === S.day ? 'k' : 'ghost'}" data-act="daysel" style="min-width:64px">${d.id === S.day ? '表示中' : '表示'}</button><input class="in" data-in="dayn" value="${esc(d.n)}">${(S.days || []).length > 1 ? `<button class="x" style="width:30px;height:30px;flex:none" data-act="daydel" title="このダイヤを削除">${ico.x}</button>` : ''}</div>`).join('')}<button class="add" style="margin-top:10px" data-act="dayadd"><i>+</i>ダイヤの種類を追加</button></div>`;
       h += `<h2>運行時間</h2><div class="card"><div class="g2">${fld('基準時刻（始発）', `<input class="in en" data-in="cfg" data-k="base" value="${esc(c.base)}">`)}${fld('終電（最終出庫）', `<input class="in en" data-in="cfg" data-k="lastT" value="${esc(c.lastT)}">`)}</div><div class="g2" style="margin-top:8px">${fld('計算する時間帯 から（空欄=自動）', `<input class="in en" data-in="cfg" data-k="wfrom" placeholder="07:00:00" value="${esc(c.wfrom || '')}">`)}${fld('まで', `<input class="in en" data-in="cfg" data-k="wto" placeholder="09:30:00" value="${esc(c.wto || '')}">`)}</div><p class="note">自動は、始発から1周期＋列車が一巡するまでです。朝ラッシュだけを詰めたいときは、その時間帯を指定してください（指定すると、その前から走っている列車も含めて計算します）。24時以降は 24:30:00 のように入力できます。</p></div>`;
       if (real) h += `<h2>時刻表と遅延回復</h2><div class="card"><div class="g2">${fld('余裕時分（走行時間に足す %）', numIn('cfgn', c.slack, 'data-k="slack" min="0" step="0.5"'))}${fld('停車時間の既定値 秒', numIn('cfgn', c.dwr, 'data-k="dwr" min="0" step="5"'))}</div><div class="row sp" style="margin-top:10px"><b>時刻表より早く発車しない（定時発車）</b>${sw('cfgsw', c.hold, 'data-k="hold"')}</div><p class="note">計画の時刻は走行時間に余裕時分を足して作ります。シミュレーションでは実際の性能で走るので、遅れた列車は余裕時分と停車・折り返しの短縮で回復します。</p></div>`;
-      h += `<h2>待避のルール</h2><div class="card"><div class="g3">${fld('退避前の余裕 秒', numIn('cfgn', c.mp, 'data-k="mp" min="0"'))}${fld('通過後の余裕 秒', numIn('cfgn', c.mg, 'data-k="mg" min="0"'))}${fld('待避停車の上限 秒', numIn('cfgn', c.cap, 'data-k="cap" min="0" step="5"'))}</div><div class="g3" style="margin-top:8px">${fld('待避駅を選ぶときに残す余裕 秒', numIn('cfgn', c.ovm ?? 30, 'data-k="ovm" min="0" step="5"'))}</div><p class="note">待避させる駅は、ぎりぎり逃げ切れる一番先の駅ではなく、退避前の余裕にこの秒数を足しても間に合う駅を選びます（間に合う駅がなければ、逃げ切れる一番先の駅）。</p><p class="note">退避前の余裕: 待たせる列車が着いてから、追い越す列車が手前の閉塞に入るまでの時間。通過後の余裕: 追い越しを見送ってから発車するまで。上限0は無制限。${real ? '現実モードでは、待たせる列車のホームが追い越す列車と同じでも、空いている別の線路があれば着発線を変えて待避させます。' : ''}</p></div>`;
+      h += `<h2>待避のルール</h2><div class="card"><div class="g3">${fld('退避前の余裕 秒', numIn('cfgn', c.mp, 'data-k="mp" min="0"'))}${fld('通過後の余裕 秒', numIn('cfgn', c.mg, 'data-k="mg" min="0"'))}${fld('待避停車の上限 秒', numIn('cfgn', c.cap, 'data-k="cap" min="0" step="5"'))}</div><p class="note">退避前の余裕: 待たせる列車が着いてから、追い越す列車が手前の閉塞に入るまでの時間。通過後の余裕: 追い越しを見送ってから発車するまで。上限0は無制限。${real ? '現実モードでは、待たせる列車のホームが追い越す列車と同じでも、空いている別の線路があれば着発線を変えて待避させます。' : ''}</p></div>`;
       h += `<h2>緩急接続</h2><div class="card"><div class="row sp"><b>優等が停まる駅での待避を優先する（自動接続）</b>${sw('cfgsw', c.xauto, 'data-k="xauto"')}</div><div class="g2" style="margin-top:8px">${fld('接続のために増やしてよい待ち時間 秒', numIn('cfgn', c.xmax, 'data-k="xmax" min="0" step="10"'))}${fld('接続駅での優等の最低停車 秒（0=延ばさない）', numIn('cfgn', c.xmin, 'data-k="xmin" min="0" step="5"'))}</div><p class="note">待避させる駅を選ぶとき、追い越す列車も停まる駅を優先して、対面で乗り換えできるようにします。特定の駅で必ず接続させたいときは、路線設定の「接続」で指定できます（旧バージョンの接続設定もそのまま使えます）。</p></div>`;
-      h += `<h2>再計算</h2><div class="card"><div class="g2">${fld('列車間隔のそろい方の重み（0=見ない）', numIn('cfgn', c.regw ?? 1, 'data-k="regw" min="0" step="0.5"'))}<div></div></div><div class="row sp" style="margin-top:10px"><b>間隔をそろえるために待避を延ばす${real ? '（MTRモードのみ）' : ''}</b>${sw('cfgsw', c.hadj !== false, 'data-k="hadj"')}</div><p class="note">再計算は、遅れの少なさだけでなく、どの駅でも発車間隔がそろうように出発ずらし・折返し停車・待避の延長を選びます。重みを大きくするほど、間隔のそろい方を優先します。${S.st.some(s => (s.pf || []).some(p => +p.hold > 0)) ? ` <button class="lk" data-act="holdclr">間隔調整の延長をすべて消す</button>` : ''}</p><div class="row sp" style="margin-top:10px"><b>折返し停車も探索する</b>${sw('cfgsw', c.tnopt, 'data-k="tnopt"')}</div><div class="g3" style="margin-top:8px">${fld('折返し 最小 秒', numIn('cfgn', c.tnmin, 'data-k="tnmin" min="0" step="5"'))}${fld('最大 秒', numIn('cfgn', c.tnmax, 'data-k="tnmax" min="0" step="5"'))}${fld('刻み 秒', numIn('cfgn', c.tnstep, 'data-k="tnstep" min="1"'))}</div><div class="g2" style="margin-top:8px">${fld('編成1本あたりの評価 秒/時', numIn('cfgn', c.fleetw, 'data-k="fleetw" min="0"'))}${fld('探索する時間 秒', numIn('cfgn', c.stime || 20, 'data-k="stime" min="5" step="5"'))}</div><p class="note">「再計算する」は先頭の運用を基準に、ほかの運用の出発ずらしと折返し停車を動かして、待避による遅れが最小になる組み合わせを探します（もう一度押すと中止）。編成1本あたりの評価は、遅れと編成数のどちらを優先するかです。駅や運用が多い大きなダイヤでは、探索する時間を長くするか、計算する時間帯を絞ると結果が良くなります。</p></div>`;
+      h += `<h2>再計算</h2><div class="card"><div class="row sp"><b>折返し停車も探索する</b>${sw('cfgsw', c.tnopt, 'data-k="tnopt"')}</div><div class="g3" style="margin-top:8px">${fld('折返し 最小 秒', numIn('cfgn', c.tnmin, 'data-k="tnmin" min="0" step="5"'))}${fld('最大 秒', numIn('cfgn', c.tnmax, 'data-k="tnmax" min="0" step="5"'))}${fld('刻み 秒', numIn('cfgn', c.tnstep, 'data-k="tnstep" min="1"'))}</div><div class="g2" style="margin-top:8px">${fld('編成1本あたりの評価 秒/時', numIn('cfgn', c.fleetw, 'data-k="fleetw" min="0"'))}${fld('探索する時間 秒', numIn('cfgn', c.stime || 20, 'data-k="stime" min="5" step="5"'))}</div><p class="note">「再計算する」は先頭の運用を基準に、ほかの運用の出発ずらしと折返し停車を動かして、待避による遅れが最小になる組み合わせを探します（もう一度押すと中止）。編成1本あたりの評価は、遅れと編成数のどちらを優先するかです。駅や運用が多い大きなダイヤでは、探索する時間を長くするか、計算する時間帯を絞ると結果が良くなります。</p></div>`;
       h += `<h2>計算</h2><div class="card"><div class="row sp"><b>入力が止まったら自動で更新</b>${sw('cfgsw', c.auto, 'data-k="auto"')}</div><div class="g2" style="margin-top:8px">${fld('自動のときの計算期間 分（0=自動）', numIn('cfgn', c.win, 'data-k="win" min="0" step="10"'))}${fld('回復とみなす遅れ 秒', numIn('cfgn', c.recov, 'data-k="recov" min="0"'))}</div><div class="row" style="margin-top:10px"><button class="pill o" data-act="calcnow">今すぐ更新</button><small class="note">前回の計算 ${CALC_MS}ミリ秒・${hm(T0W)}〜${hm(T1W)}・列車 ${TR.length}本</small></div></div></div>`;
       return h;
     }
@@ -3316,6 +3633,12 @@
     <div class="fld" style="margin-top:10px"><span>運行モード</span><div class="seg"><button class="${!real ? 'on' : ''}" data-act="mode" data-v="mtr" style="font-family:var(--jp)">MTRモード</button><button class="${real ? 'on' : ''}" data-act="mode" data-v="real" style="font-family:var(--jp)">現実モード</button></div></div>
     <p class="note">${real ? '現実モード: MTRの制約をすべて外します。停車時間は種別・駅ごと、待避や接続の延長は列車ごと、待避のための着発線の変更、時間帯ごとのパターンと時刻指定、余裕時分と定時発車、種別ごとの加速度・減速度・最高速度・編成長、列車ごとのスジの移動・運休・時刻調整が使えます。' : 'MTRモード: MTRと同じ制約で計算します（同じホームはどの種別も同じ停車時間、運用ごとに決まったホーム、停車時間は固定で時刻調整なし）。'}</p>
     <div class="g2" style="margin-top:8px">${fld('加速度 km/h/s' + (real ? '（種別で未設定のとき）' : ''), numIn('cfgn', c.acc, 'data-k="acc" step="0.1" min="0.1"'))}${fld('減速度 km/h/s', numIn('cfgn', c.dec, 'data-k="dec" step="0.1" min="0.1"'))}</div><div class="g2" style="margin-top:8px">${fld('閉塞長 m', numIn('cfgn', c.bl, 'data-k="bl" step="10" min="0"'))}${fld('編成の長さ m', numIn('cfgn', c.tl, 'data-k="tl" step="10" min="10"'))}</div><p class="note">MTRの加速度の初期値は14.4km/h/sです。編成の長さはホームと閉塞を空けるまでの時間に使います。</p></div>`;
+      h += `<h2>ナンバリングの文字</h2><div class="card"><div class="g2">${fld('フォント名', `<input class="in" data-in="nfont" value="${esc(c.nfont || '')}" placeholder="例: Jost、Futura、DIN Alternate"${c.nfdata ? ' disabled' : ''}>`)}${fld('太さ', `<select class="in" data-in="nfw">${[300, 400, 500, 600, 700, 800, 900].map(w => `<option value="${w}"${(+c.nfw || 700) === w ? ' selected' : ''}>${w}</option>`).join('')}</select>`)}</div>
+    <div class="row sp" style="margin-top:10px"><b>Google Fontsから読み込む（インターネットが必要）</b>${sw('cfgsw', c.nfg, 'data-k="nfg"')}</div>
+    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="pill ghost" data-act="nffile">フォントファイルを選ぶ（.ttf .otf .woff .woff2）</button>${c.nfdata ? `<small class="note" style="margin:0">${esc(c.nffn || 'フォントファイル')}を使っています</small><button class="lk" data-act="nfclr">外す</button>` : ''}</div>
+    <div class="g2" style="margin-top:10px">${fld('文字の大きさ %', `<input class="in en" type="number" data-in="nfs" value="${c.nfs ?? 100}" min="50" max="160" step="5">`)}${fld('字間 em（空欄=標準）', `<input class="in en" type="number" data-in="nfl" value="${c.nfl ?? ''}" step="0.01" placeholder="0.02">`)}</div>
+    <div class="row" style="gap:10px;margin-top:12px;flex-wrap:wrap">${S.lines.slice(0, 6).map(L => mark(L, numOf(stn(L.ids[0]), L) ?? '01', 64) + mark(L, null, 48)).join('')}</div>
+    <p class="note">駅ナンバリングと路線記号の文字に使います。PCに入っているフォントはフォント名だけで使えます。入っていないフォントは、Google Fontsの名前を入れて読み込むか、フォントファイルを選んでください（ファイルはダイヤのデータに保存され、JSONにも含まれます）。</p></div>`;
       h += `<h2>ファイル</h2><div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><button class="pill k" data-act="jexp">JSONで保存</button><button class="pill ghost" data-act="jimp">JSONを読み込む</button><button class="pill b" data-act="csvimp">CSVファイルを読み込む</button><button class="pill ghost" data-act="stexp">駅設定の表を書き出す</button><button class="pill ghost" data-act="report">詳細レポート（Excel）</button></div><p class="note">旧バージョン（v4以前）で保存したJSONもそのまま読み込めます。CSVファイルは、駅設定の表（Excelで保存したCSV）とMTRのスクリプトが出力したCSVのどちらにも対応しています。MTRのスクリプトは、MTR3（NTE）用とMTR4（Joban Client Mod）用のリソースパックとして配布しています。列車に乗るだけで、駅間距離・制限速度・低速区間・加速度・路線の色を書き出します。</p>
   <details class="dt" open><summary>Excelの表を貼り付ける（駅設定の表・MTRのCSV）</summary><textarea class="in" id="bulk" style="min-height:130px;font:600 13px/1.5 var(--en);white-space:pre" placeholder="Excelで表の範囲を選んでコピーし、ここに貼り付けます（1行目は見出し）。&#10;路線	路線記号	番号	駅名	英語名	次駅まで	速度	ホーム1	ホーム2&#10;副都心線	F	01	和光市	Wakoshi	2200	100	下り 本線 渋谷方面	上り 本線 和光市方面"></textarea><div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="pill b" data-act="bulk">取り込む</button><label class="row" style="font:700 12px var(--jp);color:var(--sub)">${sw('cfgsw', c.strict, 'data-k="strict"')}駅名を記号まで完全一致で結合</label></div></details>
   <details class="dt"><summary>駅設定の表の形式（説明）</summary>${stFormatHelp()}</details><div id="impmsg" class="note"></div></div>`;
@@ -3374,6 +3697,14 @@
       h += `<div class="fld" style="margin-top:10px"><span>路線の色</span><div class="cols">${LPAL.map(c => `<button class="${L.c === c ? 'on' : ''}" style="background:${c}" data-act="lncol" data-v="${c}" aria-label="${c}"></button>`).join('')}<input type="color" data-in="lncolc" value="${esc(L.c)}" title="ほかの色"></div></div>`;
       h += `<div class="g3" style="margin-top:12px;align-items:end">${fld('最初の駅の番号', numIn('lnnst', L.nst ?? 1, 'min="0"'))}<label class="fld"><span>2桁にする（M01）</span>${sw('lnpad', L.pad ?? 1)}</label><button class="pill b" data-act="lnnum">番号を振り直す</button></div>`;
       h += `<p class="note">MTRから取り込んだ [M-15] のような表記は、自動で M15 に変換して表示します。分岐駅では各路線の番号を並べて表示します。</p>`;
+      {
+        const f = L.nf || {}, on = !!L.nf;
+        h += `<details class="dt"${on ? ' open' : ''}><summary>ナンバリングの文字（この路線だけ変える）</summary><div class="card" style="margin-top:6px"><div class="g2">${fld('フォント名（空欄=全体の設定）', `<input class="in" data-in="lnf" data-k="font" value="${esc(f.font || '')}" placeholder="${esc(C().nfont || '全体の設定')}"${f.data ? ' disabled' : ''}>`)}${fld('太さ', `<select class="in" data-in="lnf" data-k="w"><option value="">全体の設定</option>${[300, 400, 500, 600, 700, 800, 900].map(w => `<option value="${w}"${+f.w === w ? ' selected' : ''}>${w}</option>`).join('')}</select>`)}</div>
+    <div class="row sp" style="margin-top:10px"><b>Google Fontsから読み込む</b>${sw('lnfg', f.g)}</div>
+    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="pill ghost" data-act="lnffile">フォントファイルを選ぶ</button>${f.data ? `<small class="note" style="margin:0">${esc(f.fn || 'フォントファイル')}</small><button class="lk" data-act="lnffclr">外す</button>` : ''}</div>
+    <div class="g2" style="margin-top:10px">${fld('文字の大きさ %（空欄=全体の設定）', `<input class="in en" type="number" data-in="lnf" data-k="s" value="${f.s ?? ''}" min="50" max="160" step="5" placeholder="${C().nfs ?? 100}">`)}${fld('字間 em（空欄=全体の設定）', `<input class="in en" type="number" data-in="lnf" data-k="l" value="${f.l ?? ''}" step="0.01" placeholder="${C().nfl ?? 0.02}">`)}</div>
+    <div class="row" style="gap:10px;margin-top:12px;align-items:center">${mark(L, numOf(stn(L.ids[0]), L) ?? '01', 64)}${mark(L, null, 48)}${on ? '<button class="lk" data-act="lnfclr">全体の設定に戻す</button>' : ''}</div></div></details>`;
+      }
       if (S.lines.length > 1) h += `<button class="lk" data-act="linedel" style="color:var(--red)">この路線を削除</button>`;
       return h + `</div><div class="row" style="gap:8px"><button class="pill b" data-act="csvimp">MTRのCSVを取り込む</button></div>`;
     }
@@ -3545,58 +3876,81 @@
     const badness = m => (m.bad || 0) * 10 + (m.tight || 0) + (m.miss || 0) + (m.fol || 0) + (m.hw || 0) + (m.blkN || 0);
     async function redScan() {
       if (ANA.busy) return; if (ERR) { toast('先に「ダイヤを計算できません」を直してください'); return }
-      ANA.busy = true; const out = $('redres'), T0 = performance.now(); out.textContent = '調べています…'; let h = '';
-      const ops = freqOps(), sn = opsSnap(ops), one = ops.map(() => 1), off0 = ops.map(op => +op.off || 0);
+      ANA.busy = true; const out = $('redres'), T0 = performance.now(); let h = '';
+      const ops = freqOps(), sn = opsSnap(ops), off0 = ops.map(op => +op.off || 0), N = ops.length;
       const ev = () => { try { return evalNow() } catch (e) { return null } };
-      // 減らした本数で、出発ずらしも少し動かして問題がなくなるかを調べる（見つかった出発ずらしを返す）
-      const ok = async ms => {
-        opsScale(ops, sn, ms); let best = null;
+      // 本数の段階: 等間隔の運用は1時間に1本ずつ、時間帯ごとの運用は5%ずつ
+      const r0 = ops.map((op, i) => opRate(op, sn[i])), band = ops.map(hasBands);
+      const msOf = lv => lv.map((l, i) => band[i] ? Math.max(.05, 1 - .05 * l) : Math.max(1, Math.round(r0[i]) - l) / r0[i]);
+      const canDown = (lv, i) => band[i] ? 1 - .05 * (lv[i] + 1) >= .1 : Math.round(r0[i]) - lv[i] - 1 >= 1;
+      const tot = lv => msOf(lv).reduce((a, m, i) => a + r0[i] * m, 0);
+      // 本数を決めて、出発ずらしも少し動かしたときの一番よい状態（問題の重さ）を調べる
+      const memo = new Map;
+      const tryLv = async lv => {
+        const key = lv.join(); if (memo.has(key)) return memo.get(key);
+        opsScale(ops, sn, msOf(lv)); let res = { bad: 1e18, offs: off0.slice() };
         try {
-          let m = ev(); if (m && isClean(m)) return { offs: off0.slice() };
-          let cur = m ? badness(m) : 1e18;
-          for (let i = 1; i < ops.length; i++) {
-            const iv = Math.max(60, hasBands(ops[i]) ? Math.min(...ops[i].bands.filter(b => +b.iv > 0).map(b => +b.iv)) : +ops[i].iv), st = Math.max(5, Math.round(iv / 12)), keep = ops[i].off;
-            let bo = keep;
-            for (let v = 0; v < iv; v += st) { ops[i].off = v; const q = ev(); if (q && badness(q) < cur) { cur = badness(q); bo = v; if (isClean(q)) { best = { offs: ops.map(op => +op.off || 0) }; break } } }
-            ops[i].off = bo; if (best) break; await sleep();
+          let m = ev(); if (m) res = { bad: badness(m), offs: off0.slice() };
+          for (let i = 1; i < N && res.bad > 0; i++) {
+            const iv = Math.max(60, band[i] ? Math.min(...ops[i].bands.filter(b => +b.iv > 0).map(b => +b.iv)) : +ops[i].iv), st = Math.max(5, Math.round(iv / 12));
+            let bo = ops[i].off;
+            for (let v = 0; v < iv; v += st) { ops[i].off = v; const q = ev(); if (q && badness(q) < res.bad) { res = { bad: badness(q), offs: ops.map(op => +op.off || 0) }; bo = v; if (!res.bad) break } }
+            ops[i].off = bo; await sleep();
           }
-          if (!best) { const q = ev(); if (q && isClean(q)) best = { offs: ops.map(op => +op.off || 0) } }
         } finally { opsRestore(ops, sn); ops.forEach((op, i) => op.off = off0[i]) }
-        return best;
+        memo.set(key, res); out.textContent = `調べています…（${memo.size}通り）`; return res;
       };
+      const el = () => performance.now() - T0, timeUp = () => el() > 50000;
       try {
         const m0 = evalNow();
         if (isClean(m0)) h = '<p class="good" style="font-weight:700">今の本数のままで、待避できない交差やホームの接近はありません。減便は必要ありません。</p>';
-        else if (!ops.length) h = '<p class="warn">本数を変えられる運用（等間隔・時間帯ごと）がありません。</p>';
+        else if (!N) h = '<p class="warn">本数を変えられる運用（等間隔・時間帯ごと）がありません。</p>';
         else {
-          // 全運用を同じ割合で減らす
-          // 全体: 運用どうしの間隔が割り切れる（同じ周期でくり返す）組み合わせを、本数の多い順に試す
-          const NICE = [60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600];
-          const ivi = ops.map((op, i) => !hasBands(op)), cands = [], seen = new Set;
-          if (ivi.some(Boolean)) {
-            for (let m = .95; m >= .15 - 1e-9; m = Math.round((m - .05) * 100) / 100) {
-              const want = ops.map((op, i) => ivi[i] ? sn[i].iv / m : 0), P = NICE.find(v => v >= Math.max(...want) - 1e-9) || 3600;
-              const ms = ops.map((op, i) => ivi[i] ? sn[i].iv / (P / Math.max(1, Math.floor(P / want[i] + 1e-9))) : 1), key = ms.map(v => v.toFixed(4)).join();
-              const mi = ms.filter((v, i) => ivi[i]), avg = mi.reduce((a, b) => a + b, 0) / mi.length; ops.forEach((op, i) => { if (!ivi[i]) ms[i] = avg });
-              if (!seen.has(key) && ms.every(v => v <= 1 + 1e-9) && ms.some(v => v < 1 - 1e-9)) { seen.add(key); cands.push(ms) }
+          // 1) 問題が一番減る運用を1段ずつ減らす（減らす本数あたりの改善が大きいものから）
+          let lv = ops.map(() => 0), cur = await tryLv(lv), steps = 0;
+          while (cur.bad > 0 && el() < 15000 && steps < 200) {
+            let best = null;
+            for (let i = 0; i < N; i++) {
+              if (!canDown(lv, i)) continue; const t = lv.slice(); t[i]++; const r = await tryLv(t), loss = tot(lv) - tot(t), gain = cur.bad - r.bad;
+              const sc = r.bad === 0 ? -1e9 + loss : -(gain / Math.max(.01, loss)); if (!best || sc < best.sc) best = { sc, t, r };
+              if (timeUp()) break;
             }
-            const tot = ms => ms.reduce((a, v, i) => a + opRate(ops[i], sn[i]) * v, 0); cands.sort((a, b) => tot(b) - tot(a));
-          } else for (let m = .9; m >= .2 - 1e-9; m = Math.round((m - .1) * 100) / 100) cands.push(ops.map(() => m));
-          let mG = 0, msG = null, offG = null;
-          for (const ms of cands) { const r = await ok(ms); if (r) { msG = ms; offG = r.offs; mG = ms.reduce((a, v, i) => a + opRate(ops[i], sn[i]) * v, 0) / ops.reduce((a, op, i) => a + opRate(op, sn[i]), 0); break } await sleep(); if (performance.now() - T0 > 25000) break }
-          // 1つの運用だけ減らす
-          const solo = [];
-          for (let i = 0; i < ops.length; i++) {
-            let found = 0, offs = null; const r0 = opRate(ops[i], sn[i]);
-            const steps = hasBands(ops[i]) ? [.9, .8, .7, .6, .5, .4, .3, .2] : NICE.filter(v => v > sn[i].iv).map(v => sn[i].iv / v);
-            for (const m of steps) { const ms = one.slice(); ms[i] = m; const r = await ok(ms); if (r) { found = m; offs = r.offs; break } await sleep(); if (performance.now() - T0 > 45000) break }
-            solo.push({ i, m: found, r0, offs });
+            if (!best) break; lv = best.t; cur = best.r; steps++;
           }
-          ANA.redp = { ops: ops.map(op => op.id), all: mG, msG, offG, solo: solo.map(x => x.m), soloOff: solo.map(x => x.offs) };
-          const fmt = v => v.toFixed(v < 10 ? 1 : 0);
+          // 1b) 少しの減便で解消しないときは、運用どうしの間隔が割り切れる組み合わせを本数の多い順に試す
+          if (cur.bad > 0) {
+            const NICE = [60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600], seen = new Set, cands = [];
+            for (let m = .95; m >= .1 - 1e-9; m = Math.round((m - .05) * 100) / 100) {
+              const want = ops.map((op, i) => band[i] ? 0 : sn[i].iv / m), P = NICE.find(v => v >= Math.max(...want) - 1e-9) || 3600;
+              const l = ops.map((op, i) => band[i] ? Math.round((1 - m) / .05) : Math.max(0, Math.round(r0[i]) - Math.round(3600 / (P / Math.max(1, Math.floor(P / want[i] + 1e-9))))));
+              const k = l.join(); if (!seen.has(k) && l.some(v => v > 0)) { seen.add(k); cands.push(l) }
+            }
+            cands.sort((a, b) => tot(b) - tot(a));
+            for (const l of cands) { const r = await tryLv(l); if (r.bad === 0) { lv = l; cur = r; break } if (el() > 35000) break }
+          }
+          // 2) 解消できたら、減らしすぎた運用を1段ずつ戻せるだけ戻す
+          if (cur.bad === 0) {
+            let again = true;
+            while (again && !timeUp()) {
+              again = false;
+              if (lv.filter(v => v > 0).length > 1) { const t = lv.map(v => Math.max(0, v - 1)), r = await tryLv(t); if (r.bad === 0) { lv = t; cur = r; again = true; continue } }
+              for (let i = 0; i < N; i++) { if (lv[i] === 0) continue; const t = lv.slice(); t[i]--; const r = await tryLv(t); if (r.bad === 0) { lv = t; cur = r; again = true } }
+            }
+          }
+          // 3) 1つの運用だけを減らす場合
+          const solo = [];
+          for (let i = 0; i < N; i++) {
+            let found = null; const t = ops.map(() => 0);
+            while (canDown(t, i) && !timeUp() && t[i] < 30) { t[i]++; const r = await tryLv(t); if (r.bad === 0) { found = { lv: t.slice(), offs: r.offs }; break } }
+            solo.push(found);
+          }
+          const ms = msOf(lv), fmt = v => v.toFixed(v < 10 ? 1 : 0);
+          ANA.redp = { ops: ops.map(op => op.id), msG: cur.bad === 0 ? ms : null, offG: cur.offs, solo: solo.map((x, i) => x ? msOf(x.lv)[i] : 0), soloOff: solo.map(x => x && x.offs) };
           h = `<p>今のダイヤの問題（計算した時間帯の件数）: 待避できない交差 ${Math.round(m0.bad || 0)}・ホームの接近 ${Math.round(m0.hw || 0)}・閉塞の詰まり ${Math.round((m0.fol || 0) + (m0.tight || 0))}</p>`;
-          h += mG ? `<div class="card hl"><b>全体を減らす: 今の約${Math.round(mG * 100)}%（${Math.round((1 - mG) * 100)}%減）</b><p class="note" style="margin:2px 0 8px">${ops.map((op, i) => `${esc(opName(op))} ${fmt(opRate(op, sn[i]))}→<b>${fmt(opRate(op, sn[i]) * msG[i])}</b>本/時`).join('・')}。運用どうしの間隔が割り切れるようにそろえています。</p><button class="pill b" data-act="redapply" data-k="all">この減便を適用する</button></div>` : '<p class="warn">全体を減らしても解消しませんでした。本数ではなく、停車時間・待避駅・折り返しの設定を見直してください。</p>';
-          h += `<div class="hsc"><table class="t"><tr><th>運用</th><th>今</th><th>全体を減らす</th><th>この運用だけ減らす</th><th></th></tr>${solo.map((x, k) => { const op = ops[x.i]; return `<tr><td>${esc(opName(op))}${hasBands(op) ? ' <small class="note">（ピーク）</small>' : ''}</td><td class="en">${fmt(x.r0)}本/時</td><td class="en">${msG ? fmt(x.r0 * msG[k]) : '-'}</td><td class="en">${x.m ? `<b>${fmt(x.r0 * x.m)}本/時</b>` : '<small class="note">これだけでは解消しない</small>'}</td><td>${x.m ? `<button class="pill ghost" data-act="redapply" data-k="${k}">適用</button>` : ''}</td></tr>` }).join('')}</table></div><p class="note">減らした本数ごとに、出発ずらしも少し動かして調べています（適用すると出発ずらしも変わります）。適用したあとに「再計算する」を押すと、間隔を整え直して、さらに本数を戻せる場合があります。適用はCtrl+Zで取り消せます。</p>`;
+          const keep = tot(lv) / r0.reduce((a, b) => a + b, 0);
+          h += cur.bad === 0 ? `<div class="card hl"><b>おすすめの減便: 全体で今の約${Math.round(keep * 100)}%（1時間あたり ${fmt(r0.reduce((a, b) => a + b, 0) - tot(lv))}本減）</b><p class="note" style="margin:2px 0 8px">${ops.map((op, i) => `${esc(opName(op))} ${fmt(r0[i])}→<b>${fmt(r0[i] * ms[i])}</b>本/時`).join('・')}。問題が一番減る運用から1本ずつ減らし（少しの減便で足りないときは、間隔が割り切れる組み合わせを試し）、解消したあと戻せる分は1本ずつ戻しています。</p><button class="pill b" data-act="redapply" data-k="all">この減便を適用する</button></div>` : '<p class="warn">本数を減らしても、調べた範囲では解消しませんでした。本数ではなく、停車時間・待避駅・折り返しの設定を見直してください。</p>';
+          h += `<div class="hsc"><table class="t"><tr><th>運用</th><th>今</th><th>おすすめ</th><th>この運用だけ減らす</th><th></th></tr>${solo.map((x, k) => { const op = ops[k]; return `<tr><td>${esc(opName(op))}${band[k] ? ' <small class="note">（ピーク）</small>' : ''}</td><td class="en">${fmt(r0[k])}本/時</td><td class="en">${cur.bad === 0 ? fmt(r0[k] * ms[k]) : '-'}</td><td class="en">${x ? `<b>${fmt(r0[k] * msOf(x.lv)[k])}本/時</b>` : '<small class="note">これだけでは解消しない</small>'}</td><td>${x ? `<button class="pill ghost" data-act="redapply" data-k="${k}">適用</button>` : ''}</td></tr>` }).join('')}</table></div><p class="note">減らした本数ごとに、出発ずらしも少し動かして調べています（適用すると出発ずらしも変わります）。適用したあとに「再計算する」を押すと、さらに本数を戻せる場合があります。適用はCtrl+Zで取り消せます。</p>`;
+          if (timeUp()) h += '<p class="note">調べる時間（50秒）を超えたため、途中までの結果です。</p>';
         }
       } catch (e) { h = '<p class="warn">' + esc(e && e.message || e) + '</p>' }
       finally { opsRestore(ops, sn); ops.forEach((op, i) => op.off = off0[i]); ANA.busy = false }
@@ -3728,6 +4082,7 @@
             else if (TBL_TRK[tok]) p.trk = TBL_TRK[tok];
             else if (/方面$/.test(tok)) p.n = tok;
             else if (/^停車\d/.test(tok)) p.dw = +tok.replace(/[^\d.]/g, '');
+            else if (/^引き?上げ?(線)?\d*$/.test(tok)) { p.turn = 2; const n = tok.replace(/[^\d.]/g, ''); if (n) p.tdw = +n }
             else if (/^折り?返し?\d/.test(tok)) { p.turn = 1; p.tdw = +tok.replace(/[^\d.]/g, '') }
             else if (/^折り?返し?$/.test(tok)) p.turn = 1;
             else if (/^路線[:：]/.test(tok)) { const M = S.lines.find(M => M.n === tok.replace(/^路線[:：]/, '')); if (M) p.ln = M.id }
@@ -3751,7 +4106,7 @@
       const rows = [head];
       S.lines.forEach(L => L.ids.forEach((id, i) => {
         const s = stn(id), e = i < L.ids.length - 1 ? lineEdge(L, i) : null, z = e ? (e.a === id ? e.z : e.z.map(q => ({ at: e.d - q.at - q.len, len: q.len, v: q.v }))) : [];
-        const pfs = (s.pf || []).map(p => [dn[p.dir], rv[p.trk] || '本線', p.n || '', p.types && p.types.length ? p.types.map(t => tyOf(t).n).join('・') : '', +p.dw !== 10 ? '停車' + p.dw : '', p.turn ? '折返し' + p.tdw : '', p.ln && LNM.has(p.ln) ? '路線:' + LNM.get(p.ln).n : ''].filter(Boolean).join(' '));
+        const pfs = (s.pf || []).map(p => [dn[p.dir], rv[p.trk] || '本線', p.n || '', p.types && p.types.length ? p.types.map(t => tyOf(t).n).join('・') : '', +p.dw !== 10 ? '停車' + p.dw : '', +p.turn === 2 ? '引上げ' + p.tdw : p.turn ? '折返し' + p.tdw : '', p.ln && LNM.has(p.ln) ? '路線:' + LNM.get(p.ln).n : ''].filter(Boolean).join(' '));
         while (pfs.length < pfMax) pfs.push('');
         const first = i === 0;
         rows.push([L.n, first ? L.en || '' : '', first ? L.code : '', first ? L.c : '', first ? mk[L.mk] || '' : '', first && L.own ? '○' : '', numOf(s, L) ?? '', s.n, s.en || '', e ? e.d : '', e ? e.v : '', e && e.q ? '○' : '', z.map(q => `${q.at}+${q.len}@${q.v}`).join('; '), ...pfs, s.dep ? s.dep.n : '', s.dep ? s.dep.dp : '', s.dep ? s.dep.rb : '']);
@@ -3947,7 +4302,7 @@
       },
       pfrm: el => { const p = curPf(), t = +el.dataset.t; p.types = (p.types || [...pfUsers(p.id).keys()]).filter(x => x !== t); touch(); R() },
       pfauto: () => { curPf().types = null; touch(); R() },
-      pfturn: () => { const p = curPf(); p.turn = p.turn ? 0 : 1; R() },
+      pfturn: () => { const p = curPf(); p.turn = !p.turn ? 1 : +p.turn === 1 ? 2 : 0; if (p.turn === 2) { hkOf(p.sid); toast('引き上げ線で折り返します（降車→引き上げ線→出発ホーム）') } R() },
       pfdel: el => twoStep(el, () => { const p = curPf(), s = stn(p.sid); s.pf = s.pf.filter(q => q !== p); OPENPF = null; touch(); RR() }),
       pfadd: () => { const s = selSt(); if (!s) return; const p = mkPf(stn(walkEnd(s.id, 'd')).n + '方面', 'd', 'M'); s.pf.push(p); OPENPF = p.id; touch(); RR() },
       dwedit: el => { const p = curPf(); el.outerHTML = `<span class="dw">${ico.clockB}<input type="number" min="0" step="0.5" data-in="pfdw" value="${p.dw}" title="基本の停車時間（秒）"></span>`; const i = document.querySelector('[data-in=pfdw]'); i.focus(); i.select() },
@@ -3971,7 +4326,7 @@
       spd: el => { C().speed = +el.dataset.v; save(); renderPlay(); renderView() },
       simgo: () => { const T = pt(document.querySelector('[data-in=simt]').value); if (isNaN(T)) { toast('時刻は 15:00:00 の形で入力してください'); return } C().simT = hms(T); rebuildWorld(T); save(); toast(hm(T) + ' から運行します') },
       calcnow: () => { clearTimeout(ct); calcNow() },
-      cfgsw: el => { const k = el.dataset.k; C()[k] = !C()[k]; document.body.classList.toggle('noanim', !C().anim); if (k === 'auto' && C().auto) calc(); save(); renderView(); if (k === 'strict' || k === 'tnopt') calc() },
+      cfgsw: el => { const k = el.dataset.k; C()[k] = !C()[k]; if (k === 'nfg') { applyNFont(); RR() } document.body.classList.toggle('noanim', !C().anim); if (k === 'auto' && C().auto) calc(); save(); renderView(); if (k === 'strict' || k === 'tnopt') calc() },
       jexp: () => exportJson(), jimp: () => $('fjson').click(), csvimp: () => $('fcsv').click(),
       bulk: () => bulkPaste($('bulk').value),
       reset: el => twoStep(el, () => { blank(); SEL = null; VIEW = 'home'; SIMW = null; LASTSRCH = null; ANA.done = false; RR(); calcNow() }),
@@ -4023,7 +4378,13 @@
       anaapply: el => { const r = ANA.rec[+el.dataset.i]; if (!r || !r.fn) return; save(true); r.fn(); touch(); ANA.rec.splice(+el.dataset.i, 1); toast('適用しました: ' + r.t + '（' + (/Mac/.test(navigator.platform) ? '⌘' : 'Ctrl') + '+Zで元に戻せます）', 4500); calcNow() },
       depgo: el => { OPENPF = null; select({ k: 'st', id: +el.dataset.id }); setTimeout(() => { const e = $('deph'); e && e.scrollIntoView({ block: 'start', behavior: 'smooth' }) }, 60) },
       depnew: () => { const id = +$('depnew').value, s = stn(id); if (!GM.has(id) || s.dep) return; s.dep = { n: s.n + '車庫', dp: 60, rb: 60, gap: 60, ops: [] }; const op = defaultOp(s); s.dep.ops.push(op); OPENOP = op.id; select({ k: 'st', id }); R(); setTimeout(() => { const e = $('deph'); e && e.scrollIntoView({ block: 'start', behavior: 'smooth' }) }, 60) },
-      holdclr: () => { save(true); S.st.forEach(s => (s.pf || []).forEach(p => delete p.hold)); R(); toast('間隔調整の延長を消しました（Ctrl+Zで戻せます）') },
+      mvgo: () => { const s = selSt(); if (!s) return; const from = +$('mvfrom').value, to = +document.querySelector('[data-in=mvto]').value, af = $('mvafter').value, keep = $('mvkeep').checked; save(true); const m = moveStation(s.id, from, to, af === '' ? null : +af, keep); if (m) { toast(m); return } MVTO = null; const T = S.lines.find(L => L.id === to); toast(`${s.n}を${T.n}へ${keep ? '追加' : '移'}しました（Ctrl+Zで戻せます）`, 3500); if (GM.has(s.id)) select({ k: 'st', id: s.id }); else { SEL = null; VIEW = 'home' } R() },
+      nffile: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.ttf,.otf,.woff,.woff2,font/*'; i.onchange = () => { const f = i.files[0]; if (!f) return; if (f.size > 8e6) { toast('フォントファイルが大きすぎます（8MBまで）'); return } const r = new FileReader(); r.onload = () => { C().nfdata = r.result; C().nffn = f.name; NFLOADED = ''; applyNFont(); save(); RR(); toast(f.name + ' をナンバリングに使います') }; r.readAsDataURL(f) }; i.click() },
+      nfclr: () => { delete C().nfdata; delete C().nffn; NFLOADED = ''; applyNFont(); save(); RR() },
+      lnfg: () => { const L = curLine(); L.nf = L.nf || {}; L.nf.g = !L.nf.g; applyNFont(); save(); RR() },
+      lnffile: () => { const L = curLine(), i = document.createElement('input'); i.type = 'file'; i.accept = '.ttf,.otf,.woff,.woff2,font/*'; i.onchange = () => { const f = i.files[0]; if (!f) return; if (f.size > 8e6) { toast('フォントファイルが大きすぎます（8MBまで）'); return } const r = new FileReader(); r.onload = () => { L.nf = L.nf || {}; L.nf.data = r.result; L.nf.fn = f.name; NFL.delete('DSNumL' + L.id); applyNFont(); save(); RR(); toast(L.n + 'のナンバリングに ' + f.name + ' を使います') }; r.readAsDataURL(f) }; i.click() },
+      lnffclr: () => { const L = curLine(); if (L.nf) { delete L.nf.data; delete L.nf.fn; if (!Object.keys(L.nf).length) delete L.nf } NFL.delete('DSNumL' + L.id); applyNFont(); save(); RR() },
+      lnfclr: () => { const L = curLine(); delete L.nf; applyNFont(); save(); RR() },
       errundo: () => histGo(-1),
       errhome: () => { SEL = null; VIEW = 'home'; RR() },
       errop: () => { const x = ERRX || {}; OPENOP = x.op; select({ k: 'st', id: x.dsid }); setTimeout(() => { const el = document.querySelector(`[data-op="${x.op}"]`); el && el.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, 50) },
@@ -4065,7 +4426,18 @@
       exdw: (el, ev) => { if (ev.type !== 'change') return; const r = excAt(el); r.x.dw = r.x.dw || {}; r.x.dw[el.dataset.k] = Math.max(0, +el.value || 0); excClean(r); afterExc() },
       expf: (el, ev) => { if (ev.type !== 'change') return; const r = excAt(el); r.x.pf = r.x.pf || {}; r.x.pf[el.dataset.k] = el.value ? +el.value : 0; excClean(r); afterExc() },
       pfdw: (el, ev) => { if (ev.type !== 'change') return; curPf().dw = Math.max(0, Math.round((+el.value || 0) * 2) / 2); R() },
-      pfhold: (el, ev) => { if (ev.type !== 'change') return; const p = curPf(); if (!p) return; if (!(+el.value > 0)) delete p.hold; else p.hold = Math.min(600, Math.round(+el.value)); R() },
+      spdr2: (el, ev) => { setSpeed(vToSpd(+el.value), ev.type === 'change') },
+      nfont: (el, ev) => { if (ev.type !== 'change') return; C().nfont = el.value.trim(); applyNFont(); save(); RR() },
+      nfw: (el, ev) => { if (ev.type !== 'change') return; C().nfw = +el.value; applyNFont(); save() },
+      nfs: (el, ev) => { if (ev.type !== 'change') return; C().nfs = Math.max(50, Math.min(160, +el.value || 100)); applyNFont(); save() },
+      nfl: (el, ev) => { if (ev.type !== 'change') return; C().nfl = el.value === '' ? null : +el.value; applyNFont(); save() },
+      lnf: (el, ev) => { if (ev.type !== 'change') return; const L = curLine(), k = el.dataset.k; L.nf = L.nf || {}; const v = el.value.trim(); if (v === '') delete L.nf[k]; else L.nf[k] = k === 'font' ? v : +v; if (!Object.keys(L.nf).length) delete L.nf; applyNFont(); save(); RR() },
+      mvto: (el, ev) => { if (ev.type !== 'change') return; MVTO = +el.value; renderView() },
+      pfadw: (el, ev) => { if (ev.type !== 'change') return; const p = curPf(); if (p) { p.adw = Math.max(0, +el.value || 0); R() } },
+      pfbdw: (el, ev) => { if (ev.type !== 'change') return; const p = curPf(); if (p) { p.bdw = Math.max(0, +el.value || 0); R() } },
+      hktin: (el, ev) => { if (ev.type !== 'change') return; const s = selSt(); if (s) { hkOf(s.id).tin = Math.max(0, +el.value || 0); R() } },
+      hktout: (el, ev) => { if (ev.type !== 'change') return; const s = selSt(); if (s) { hkOf(s.id).tout = Math.max(0, +el.value || 0); R() } },
+      hkn: (el, ev) => { if (ev.type !== 'change') return; const s = selSt(); if (s) { hkOf(s.id).n = Math.max(1, Math.round(+el.value || 1)); R() } },
       pfrdw: (el, ev) => { if (ev.type !== 'change') return; const p = curPf(); if (!p) return; if (el.value === '') delete p.rdw; else p.rdw = Math.max(0, +el.value || 0); R() },
       pftrk: (el, ev) => { if (ev.type !== 'change') return; curPf().trk = el.value; touch(); RR() },
       pfdir: (el, ev) => { if (ev.type !== 'change') return; curPf().dir = el.value; touch(); RR() },
